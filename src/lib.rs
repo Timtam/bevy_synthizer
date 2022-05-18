@@ -20,25 +20,18 @@ struct BufferAssetLoader;
 impl AssetLoader for BufferAssetLoader {
     fn load<'a>(
         &'a self,
-        _bytes: &'a [u8],
+        bytes: &'a [u8],
         load_context: &'a mut LoadContext,
     ) -> BoxedFuture<'a, Result<(), anyhow::Error>> {
         Box::pin(async move {
             let buffer: Option<Buffer> =
                 match load_context.path().extension().unwrap().to_str().unwrap() {
                     "flac" | "mp3" | "wav" => {
-                        if let Ok(path) = load_context.path().canonicalize() {
-                            println!("Supported asset: {:?}", path);
-                            syz::Buffer::from_file(path).map(Buffer).ok()
-                        } else {
-                            println!("Couldn't");
-                            None
-                        }
+                        syz::Buffer::from_encoded_data(bytes).map(Buffer).ok()
                     }
                     _ => None,
                 };
             if let Some(buffer) = buffer {
-                println!("Got a buffer");
                 load_context.set_default_asset(LoadedAsset::new(buffer));
             }
             Ok(())
@@ -50,7 +43,7 @@ impl AssetLoader for BufferAssetLoader {
     }
 }
 
-#[derive(Component, Clone, Reflect)]
+#[derive(Component, Clone, Debug, Reflect)]
 #[reflect(Component)]
 pub struct Sound {
     pub buffer: Handle<Buffer>,
@@ -69,7 +62,7 @@ impl Default for Sound {
     fn default() -> Self {
         Self {
             buffer: Default::default(),
-            gain: 0.,
+            gain: 1.,
             pitch: 1.,
             looping: false,
             paused: false,
@@ -191,7 +184,6 @@ pub fn update_sound_properties(
         global_transform,
     ) in query.iter_mut()
     {
-        let has_transform = transform.is_some();
         let Sound {
             gain,
             pitch,
@@ -212,11 +204,18 @@ pub fn update_sound_properties(
                 let generator =
                     syz::BufferGenerator::new(&context).expect("Failed to create generator");
                 generator.buffer().set(&**b).expect("Unable to set buffer");
-                if has_transform {
+                let translation = global_transform
+                    .map(|v| v.translation)
+                    .or_else(|| transform.map(|v| v.translation));
+                if let Some(translation) = translation {
                     let source = syz::Source3D::new(
                         &context,
                         syz::PannerStrategy::Delegate,
-                        (0.0, 0.0, 0.0),
+                        (
+                            translation.x as f64,
+                            translation.y as f64,
+                            translation.z as f64,
+                        ),
                     )
                     .expect("Failed to create source");
                     source

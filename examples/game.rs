@@ -43,7 +43,7 @@ fn load_and_create(
         let buffer = asset_server.get_handle(handle);
         commands
             .spawn()
-            .insert(Transform::from_translation(Vec3::new(15., 0., 0.)))
+            .insert(Transform::from_translation(Vec3::new(45., 0., 0.)))
             .insert(Sound {
                 buffer,
                 looping: true,
@@ -55,15 +55,17 @@ fn load_and_create(
 fn rotate_listener(time: Res<Time>, mut query: Query<(&mut RotationTimer, &mut Transform)>) {
     for (mut timer, mut transform) in query.iter_mut() {
         timer.tick(time.delta());
-        transform.rotation = Quat::from_rotation_z(f32::consts::PI * 2. * timer.percent());
+        let angle = f32::consts::PI * 2. * timer.percent();
+        transform.rotation = Quat::from_rotation_z(angle);
     }
 }
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_system(bevy::input::system::exit_on_esc_system)
+        .insert_resource(SynthizerConfig { hrtf: true })
         .add_plugin(SynthizerPlugin)
+        .add_system(bevy::input::system::exit_on_esc_system)
         .init_resource::<AssetHandles>()
         .add_startup_system(setup)
         .add_system(load_and_create)
