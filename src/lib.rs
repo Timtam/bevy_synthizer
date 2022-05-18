@@ -8,7 +8,6 @@ use bevy::{
     transform::TransformSystem,
     utils::BoxedFuture,
 };
-use derive_more::{Deref, DerefMut};
 pub use synthizer as syz;
 
 #[derive(Clone, Deref, DerefMut, PartialEq, TypeUuid)]

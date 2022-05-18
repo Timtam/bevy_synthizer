@@ -10,5 +10,4 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 bevy = { version = "0.7", default-features = false }
-derive_more = "0.99"
-synthizer = { git = "https://github.com/synthizer/synthizer-rs" }
+synthizer = "0.4"
