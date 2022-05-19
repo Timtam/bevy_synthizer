@@ -64,7 +64,8 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(SynthizerConfig {
-            default_panner_strategy: bevy_synthizer::syz::PannerStrategy::Hrtf,
+            default_panner_strategy: Some(bevy_synthizer::syz::PannerStrategy::Hrtf),
+            ..default()
         })
         .add_plugin(SynthizerPlugin)
         .add_system(bevy::input::system::exit_on_esc_system)

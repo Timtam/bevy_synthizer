@@ -380,16 +380,74 @@ fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct SynthizerConfig {
-    pub default_panner_strategy: syz::PannerStrategy,
+    pub default_panner_strategy: Option<syz::PannerStrategy>,
+    pub default_distance_model: Option<syz::DistanceModel>,
+    pub default_distance_ref: Option<f64>,
+    pub default_distance_max: Option<f64>,
+    pub default_rolloff: Option<f64>,
+    pub default_closeness_boost: Option<f64>,
+    pub default_closeness_boost_distance: Option<f64>,
 }
 
-impl Default for SynthizerConfig {
-    fn default() -> Self {
-        Self {
-            default_panner_strategy: syz::PannerStrategy::Stereo,
-        }
+#[derive(Debug)]
+struct Defaults {
+    panner_strategy: syz::PannerStrategy,
+    distance_model: syz::DistanceModel,
+    distance_ref: f64,
+    distance_max: f64,
+    rolloff: f64,
+    closeness_boost: f64,
+    closeness_boost_distance: f64,
+}
+
+fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, defaults: Res<Defaults>) {
+    if config.is_changed() {
+        context
+            .default_panner_strategy()
+            .set(
+                config
+                    .default_panner_strategy
+                    .unwrap_or(defaults.panner_strategy),
+            )
+            .expect("Failed to set panner strategy");
+        context
+            .default_distance_modle()
+            .set(
+                config
+                    .default_distance_model
+                    .unwrap_or(defaults.distance_model),
+            )
+            .expect("Failed to set distance model");
+        context
+            .default_distance_ref()
+            .set(config.default_distance_ref.unwrap_or(defaults.distance_ref))
+            .expect("Failed to set distance_ref");
+        context
+            .default_distance_max()
+            .set(config.default_distance_max.unwrap_or(defaults.distance_max))
+            .expect("Failed to set distance_max");
+        context
+            .default_rolloff()
+            .set(config.default_rolloff.unwrap_or(defaults.rolloff))
+            .expect("Failed to set rolloff");
+        context
+            .default_closeness_boost()
+            .set(
+                config
+                    .default_closeness_boost
+                    .unwrap_or(defaults.closeness_boost),
+            )
+            .expect("Failed to set closeness_boost");
+        context
+            .default_closeness_boost_distance()
+            .set(
+                config
+                    .default_closeness_boost_distance
+                    .unwrap_or(defaults.closeness_boost_distance),
+            )
+            .expect("Failed to set closeness_boost_distance");
     }
 }
 
@@ -402,17 +460,23 @@ impl Plugin for SynthizerPlugin {
         if !app.world.contains_resource::<SynthizerConfig>() {
             app.insert_resource(SynthizerConfig::default());
         }
-        let config = *app.world.get_resource::<SynthizerConfig>().unwrap();
-        context
-            .default_panner_strategy()
-            .set(config.default_panner_strategy)
-            .expect("Failed to set panner strategy");
+        let defaults = Defaults {
+            panner_strategy: context.default_panner_strategy().get().unwrap(),
+            distance_model: context.default_distance_modle().get().unwrap(),
+            distance_ref: context.default_distance_ref().get().unwrap(),
+            distance_max: context.default_distance_max().get().unwrap(),
+            rolloff: context.default_rolloff().get().unwrap(),
+            closeness_boost: context.default_closeness_boost().get().unwrap(),
+            closeness_boost_distance: context.default_closeness_boost_distance().get().unwrap(),
+        };
         app.add_asset::<Buffer>()
             .init_asset_loader::<BufferAssetLoader>()
             .register_type::<Listener>()
             .insert_resource(guard)
             .insert_resource(context)
             .init_resource::<LastBuffer>()
+            .insert_resource(defaults)
+            .add_system_to_stage(CoreStage::PreUpdate, sync_config)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 swap_buffers.before(update_sound_properties),
