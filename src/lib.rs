@@ -98,6 +98,27 @@ pub struct ClosenessBoostDistance(f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Reflect)]
 #[reflect(Component)]
+pub struct AngularPan {
+    pub azimuth: f64,
+    pub elevation: f64,
+}
+
+#[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
+#[reflect(Component)]
+pub struct ScalarPan(pub f64);
+
+impl ScalarPan {
+    pub fn left() -> Self {
+        Self(-1.)
+    }
+
+    pub fn right() -> Self {
+        Self(1.)
+    }
+}
+
+#[derive(Component, Clone, Copy, Debug, Default, Reflect)]
+#[reflect(Component)]
 pub struct Listener;
 
 pub fn update_listener(
@@ -168,6 +189,8 @@ pub fn update_sound_properties(
         Option<&Rolloff>,
         Option<&ClosenessBoost>,
         Option<&ClosenessBoostDistance>,
+        Option<&AngularPan>,
+        Option<&ScalarPan>,
         Option<&Transform>,
         Option<&GlobalTransform>,
     )>,
@@ -180,6 +203,8 @@ pub fn update_sound_properties(
         rolloff,
         closeness_boost,
         closeness_boost_distance,
+        angular_pan,
+        scalar_pan,
         transform,
         global_transform,
     ) in query.iter_mut()
@@ -249,6 +274,7 @@ pub fn update_sound_properties(
         }
         if let Some(source) = sound.source.as_mut() {
             source.gain().set(gain).expect("Failed to set gain");
+            let mut clear_source = false;
             if let Some(translation) = translation {
                 if let Some(source) = source.cast_to::<syz::Source3D>().unwrap() {
                     source
@@ -303,8 +329,33 @@ pub fn update_sound_properties(
                         .closeness_boost_distance()
                         .set(closeness_boost_distance)
                         .expect("Failed to set closeness_boost_distance");
+                } else {
+                    clear_source = true;
                 }
-            } else {
+            } else if let Some(angular_pan) = angular_pan {
+                if let Some(source) = source.cast_to::<syz::AngularPannedSource>().unwrap() {
+                    source
+                        .azimuth()
+                        .set(angular_pan.azimuth)
+                        .expect("Failed to set azimuth");
+                    source
+                        .elevation()
+                        .set(angular_pan.elevation)
+                        .expect("Failed to set elevation");
+                } else {
+                    clear_source = true;
+                }
+            } else if let Some(scalar_pan) = scalar_pan {
+                if let Some(source) = source.cast_to::<syz::ScalarPannedSource>().unwrap() {
+                    source
+                        .panning_scalar()
+                        .set(**scalar_pan)
+                        .expect("Failed to set scalar panning");
+                } else {
+                    clear_source = true;
+                }
+            }
+            if clear_source {
                 sound.source = None;
             }
         }
