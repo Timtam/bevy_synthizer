@@ -63,7 +63,9 @@ fn rotate_listener(time: Res<Time>, mut query: Query<(&mut RotationTimer, &mut T
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(SynthizerConfig { hrtf: true })
+        .insert_resource(SynthizerConfig {
+            default_panner_strategy: bevy_synthizer::syz::PannerStrategy::Hrtf,
+        })
         .add_plugin(SynthizerPlugin)
         .add_system(bevy::input::system::exit_on_esc_system)
         .init_resource::<AssetHandles>()

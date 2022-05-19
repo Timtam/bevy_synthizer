@@ -329,9 +329,17 @@ fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<
     }
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub struct SynthizerConfig {
-    pub hrtf: bool,
+    pub default_panner_strategy: syz::PannerStrategy,
+}
+
+impl Default for SynthizerConfig {
+    fn default() -> Self {
+        Self {
+            default_panner_strategy: syz::PannerStrategy::Stereo,
+        }
+    }
 }
 
 pub struct SynthizerPlugin;
@@ -344,17 +352,10 @@ impl Plugin for SynthizerPlugin {
             app.insert_resource(SynthizerConfig::default());
         }
         let config = *app.world.get_resource::<SynthizerConfig>().unwrap();
-        if config.hrtf {
-            context
-                .default_panner_strategy()
-                .set(syz::PannerStrategy::Hrtf)
-                .expect("Failed to set panner strategy");
-        } else {
-            context
-                .default_panner_strategy()
-                .set(syz::PannerStrategy::Stereo)
-                .expect("Failed to set panner strategy");
-        }
+        context
+            .default_panner_strategy()
+            .set(config.default_panner_strategy)
+            .expect("Failed to set panner strategy");
         app.add_asset::<Buffer>()
             .init_asset_loader::<BufferAssetLoader>()
             .register_type::<Listener>()
