@@ -199,37 +199,42 @@ pub fn update_sound_properties(
             }
             sound.restart = false;
         }
-        if let Some(b) = buffers.get(sound.buffer.clone()) {
-            if sound.source.is_none() {
-                let generator =
-                    syz::BufferGenerator::new(&context).expect("Failed to create generator");
-                generator.buffer().set(&**b).expect("Unable to set buffer");
-                let translation = global_transform
-                    .map(|v| v.translation)
-                    .or_else(|| transform.map(|v| v.translation));
-                if let Some(translation) = translation {
-                    let source = syz::Source3D::new(
-                        &context,
-                        syz::PannerStrategy::Delegate,
-                        (
-                            translation.x as f64,
-                            translation.y as f64,
-                            translation.z as f64,
-                        ),
-                    )
-                    .expect("Failed to create source");
-                    source
-                        .add_generator(&generator)
-                        .expect("Unable to add generator");
-                    sound.source = Some(source.into());
-                } else {
-                    let source = syz::DirectSource::new(&context).expect("Failed to create source");
-                    source
-                        .add_generator(&generator)
-                        .expect("Failed to add generator");
-                    sound.source = Some(source.into());
+        if sound.generator.is_none() {
+            let generator =
+                syz::BufferGenerator::new(&context).expect("Failed to create generator");
+            sound.generator = Some(generator);
+        }
+        let translation = global_transform
+            .map(|v| v.translation)
+            .or_else(|| transform.map(|v| v.translation));
+        if sound.source.is_none() {
+            if let Some(b) = buffers.get(sound.buffer.clone()) {
+                if let Some(generator) = sound.generator.as_mut() {
+                    generator.buffer().set(&**b).expect("Unable to set buffer");
+                    if let Some(translation) = translation {
+                        let source = syz::Source3D::new(
+                            &context,
+                            syz::PannerStrategy::Delegate,
+                            (
+                                translation.x as f64,
+                                translation.y as f64,
+                                translation.z as f64,
+                            ),
+                        )
+                        .expect("Failed to create source");
+                        source
+                            .add_generator(generator)
+                            .expect("Unable to add generator");
+                        sound.source = Some(source.into());
+                    } else {
+                        let source =
+                            syz::DirectSource::new(&context).expect("Failed to create source");
+                        source
+                            .add_generator(generator)
+                            .expect("Failed to add generator");
+                        sound.source = Some(source.into());
+                    }
                 }
-                sound.generator = Some(generator);
             }
         }
         if let Some(generator) = sound.generator.as_mut() {
@@ -244,55 +249,63 @@ pub fn update_sound_properties(
         }
         if let Some(source) = sound.source.as_mut() {
             source.gain().set(gain).expect("Failed to set gain");
-            let translation = global_transform
-                .map(|v| v.translation)
-                .or_else(|| transform.map(|v| v.translation));
             if let Some(translation) = translation {
-                let source = source.cast_to::<syz::Source3D>().unwrap().unwrap();
-                source
-                    .position()
-                    .set((
-                        translation.x as f64,
-                        translation.y as f64,
-                        translation.z as f64,
-                    ))
-                    .expect("Failed to set position");
-                if let Some(distance_model) = distance_model {
+                if let Some(source) = source.cast_to::<syz::Source3D>().unwrap() {
+                    source
+                        .position()
+                        .set((
+                            translation.x as f64,
+                            translation.y as f64,
+                            translation.z as f64,
+                        ))
+                        .expect("Failed to set position");
+                    let distance_model = distance_model
+                        .cloned()
+                        .map(|v| *v)
+                        .unwrap_or_else(|| context.default_distance_modle().get().unwrap());
                     source
                         .distance_model()
-                        .set(**distance_model)
+                        .set(distance_model)
                         .expect("Failed to set distance_model");
-                }
-                if let Some(distance_ref) = distance_ref {
+                    let distance_ref = distance_ref
+                        .map(|v| **v)
+                        .unwrap_or_else(|| context.default_distance_ref().get().unwrap());
                     source
                         .distance_ref()
-                        .set(**distance_ref)
+                        .set(distance_ref)
                         .expect("Failed to set distance_ref");
-                }
-                if let Some(distance_max) = distance_max {
+                    let distance_max = distance_max
+                        .map(|v| **v)
+                        .unwrap_or_else(|| context.default_distance_max().get().unwrap());
                     source
                         .distance_max()
-                        .set(**distance_max)
+                        .set(distance_max)
                         .expect("Failed to set distance_max");
-                }
-                if let Some(rolloff) = rolloff {
+                    let rolloff = rolloff
+                        .map(|v| **v)
+                        .unwrap_or_else(|| context.default_rolloff().get().unwrap());
                     source
                         .rolloff()
-                        .set(**rolloff)
+                        .set(rolloff)
                         .expect("Failed to set rolloff");
-                }
-                if let Some(closeness_boost) = closeness_boost {
+                    let closeness_boost = closeness_boost
+                        .map(|v| **v)
+                        .unwrap_or_else(|| context.default_closeness_boost().get().unwrap());
                     source
                         .closeness_boost()
-                        .set(**closeness_boost)
+                        .set(closeness_boost)
                         .expect("Failed to set closeness_boost");
-                }
-                if let Some(closeness_boost_distance) = closeness_boost_distance {
+                    let closeness_boost_distance =
+                        closeness_boost_distance.map(|v| **v).unwrap_or_else(|| {
+                            context.default_closeness_boost_distance().get().unwrap()
+                        });
                     source
                         .closeness_boost_distance()
-                        .set(**closeness_boost_distance)
+                        .set(closeness_boost_distance)
                         .expect("Failed to set closeness_boost_distance");
                 }
+            } else {
+                sound.source = None;
             }
         }
     }
