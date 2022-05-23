@@ -117,6 +117,11 @@ impl ScalarPan {
     }
 }
 
+pub enum SynthizerEvent {
+    Finished(Entity),
+    Looped(Entity),
+}
+
 #[derive(Component, Clone, Copy, Debug, Default, Reflect)]
 #[reflect(Component)]
 pub struct Listener;
@@ -451,6 +456,33 @@ fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, default
     }
 }
 
+fn events(
+    context: Res<syz::Context>,
+    sounds: Query<(Entity, &Sound)>,
+    mut output: EventWriter<SynthizerEvent>,
+) {
+    context.get_events().for_each(|event| {
+        if let Ok(event) = event {
+            for (entity, sound) in sounds.iter() {
+                if let Some(generator) = &sound.generator {
+                    if *generator.handle() == event.source {
+                        match event.r#type {
+                            syz::EventType::Finished => {
+                                output.send(SynthizerEvent::Finished(entity));
+                            }
+                            syz::EventType::Looped => {
+                                output.send(SynthizerEvent::Looped(entity));
+                            }
+                            _ => {}
+                        }
+                        continue;
+                    }
+                }
+            }
+        }
+    });
+}
+
 pub struct SynthizerPlugin;
 
 impl Plugin for SynthizerPlugin {
@@ -469,6 +501,7 @@ impl Plugin for SynthizerPlugin {
             closeness_boost: context.default_closeness_boost().get().unwrap(),
             closeness_boost_distance: context.default_closeness_boost_distance().get().unwrap(),
         };
+        context.enable_events().expect("Failed to enable events");
         app.add_asset::<Buffer>()
             .init_asset_loader::<BufferAssetLoader>()
             .register_type::<Listener>()
@@ -476,6 +509,7 @@ impl Plugin for SynthizerPlugin {
             .insert_resource(context)
             .init_resource::<LastBuffer>()
             .insert_resource(defaults)
+            .add_event::<SynthizerEvent>()
             .add_system_to_stage(CoreStage::PreUpdate, sync_config)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -494,6 +528,7 @@ impl Plugin for SynthizerPlugin {
                     .before(update_playback_state),
             )
             .add_system_to_stage(CoreStage::PostUpdate, update_playback_state)
-            .add_system_to_stage(CoreStage::PostUpdate, remove_sound);
+            .add_system_to_stage(CoreStage::PostUpdate, remove_sound)
+            .add_system(events);
     }
 }
