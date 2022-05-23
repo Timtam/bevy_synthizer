@@ -475,7 +475,7 @@ fn events(
                             }
                             _ => {}
                         }
-                        continue;
+                        break;
                     }
                 }
             }
