@@ -74,27 +74,27 @@ impl Default for Sound {
 }
 
 #[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
-pub struct DistanceModel(syz::DistanceModel);
+pub struct DistanceModel(pub syz::DistanceModel);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub struct DistanceRef(f64);
+pub struct DistanceRef(pub f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub struct DistanceMax(f64);
+pub struct DistanceMax(pub f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub struct Rolloff(f64);
+pub struct Rolloff(pub f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub struct ClosenessBoost(f64);
+pub struct ClosenessBoost(pub f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
 #[reflect(Component)]
-pub struct ClosenessBoostDistance(f64);
+pub struct ClosenessBoostDistance(pub f64);
 
 #[derive(Component, Clone, Copy, Debug, Default, Reflect)]
 #[reflect(Component)]
