@@ -291,6 +291,7 @@ pub fn update_sound_properties(
             }
         }
         if let Some(generator) = sound.generator.as_mut() {
+            generator.gain().set(gain).expect("Failed to set gain");
             generator
                 .pitch_bend()
                 .set(pitch)
