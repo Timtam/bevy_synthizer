@@ -43,7 +43,7 @@ fn load_and_create(
         let buffer = asset_server.get_handle(handle);
         commands
             .spawn()
-            .insert(Transform::from_translation(Vec3::new(45., 0., 0.)))
+            .insert(Transform::from_translation(Vec3::new(10., 0., 0.)))
             .insert(Sound {
                 buffer,
                 looping: true,
@@ -65,6 +65,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .insert_resource(SynthizerConfig {
             default_panner_strategy: Some(bevy_synthizer::syz::PannerStrategy::Hrtf),
+            default_distance_model: Some(bevy_synthizer::syz::DistanceModel::Inverse),
             ..default()
         })
         .add_plugin(SynthizerPlugin)
