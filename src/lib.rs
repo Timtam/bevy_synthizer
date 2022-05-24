@@ -317,7 +317,7 @@ pub fn update_sound_properties(
                     let distance_model = distance_model
                         .cloned()
                         .map(|v| *v)
-                        .unwrap_or_else(|| context.default_distance_modle().get().unwrap());
+                        .unwrap_or_else(|| context.default_distance_model().get().unwrap());
                     source
                         .distance_model()
                         .set(distance_model)
@@ -442,7 +442,7 @@ fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, default
             )
             .expect("Failed to set panner strategy");
         context
-            .default_distance_modle()
+            .default_distance_model()
             .set(
                 config
                     .default_distance_model
@@ -518,7 +518,7 @@ impl Plugin for SynthizerPlugin {
         }
         let defaults = Defaults {
             panner_strategy: context.default_panner_strategy().get().unwrap(),
-            distance_model: context.default_distance_modle().get().unwrap(),
+            distance_model: context.default_distance_model().get().unwrap(),
             distance_ref: context.default_distance_ref().get().unwrap(),
             distance_max: context.default_distance_max().get().unwrap(),
             rolloff: context.default_rolloff().get().unwrap(),
