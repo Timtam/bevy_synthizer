@@ -256,6 +256,29 @@ pub fn update_sound_properties(
                             .add_generator(generator)
                             .expect("Unable to add generator");
                         sound.source = Some(source.into());
+                    } else if let Some(scalar_pan) = scalar_pan {
+                        let source = syz::ScalarPannedSource::new(
+                            &context,
+                            syz::PannerStrategy::Delegate,
+                            **scalar_pan,
+                        )
+                        .expect("Failed to create source");
+                        source
+                            .add_generator(generator)
+                            .expect("Failed to add generator");
+                        sound.source = Some(source.into());
+                    } else if let Some(angular_pan) = angular_pan {
+                        let source = syz::AngularPannedSource::new(
+                            &context,
+                            syz::PannerStrategy::Delegate,
+                            angular_pan.azimuth,
+                            angular_pan.elevation,
+                        )
+                        .expect("Failed to create source");
+                        source
+                            .add_generator(generator)
+                            .expect("Failed to add generator");
+                        sound.source = Some(source.into());
                     } else {
                         let source =
                             syz::DirectSource::new(&context).expect("Failed to create source");
