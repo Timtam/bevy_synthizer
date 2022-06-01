@@ -10,7 +10,7 @@ use bevy::{
 };
 pub use synthizer as syz;
 
-#[derive(Clone, Deref, DerefMut, PartialEq, TypeUuid)]
+#[derive(Clone, Debug, Deref, DerefMut, PartialEq, TypeUuid)]
 #[uuid = "6b6b533a-bb1f-11ec-bda2-00155d8fdde9"]
 pub struct Buffer(syz::Buffer);
 
