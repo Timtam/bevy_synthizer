@@ -421,7 +421,7 @@ pub struct SynthizerConfig {
 }
 
 #[derive(Debug)]
-struct Defaults {
+pub struct SynthizerDefaults {
     panner_strategy: syz::PannerStrategy,
     distance_model: syz::DistanceModel,
     distance_ref: f64,
@@ -431,7 +431,7 @@ struct Defaults {
     closeness_boost_distance: f64,
 }
 
-fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, defaults: Res<Defaults>) {
+fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, defaults: Res<SynthizerDefaults>) {
     if config.is_changed() {
         context
             .default_panner_strategy()
@@ -516,7 +516,7 @@ impl Plugin for SynthizerPlugin {
         if !app.world.contains_resource::<SynthizerConfig>() {
             app.insert_resource(SynthizerConfig::default());
         }
-        let defaults = Defaults {
+        let defaults = SynthizerDefaults {
             panner_strategy: context.default_panner_strategy().get().unwrap(),
             distance_model: context.default_distance_model().get().unwrap(),
             distance_ref: context.default_distance_ref().get().unwrap(),
