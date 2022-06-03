@@ -170,16 +170,18 @@ pub fn update_listener(
 #[derive(Default, Deref, DerefMut)]
 struct LastBuffer(HashMap<Entity, Handle<Buffer>>);
 
-fn swap_buffers(mut last_buffer: ResMut<LastBuffer>, mut query: Query<(Entity, &mut Sound)>) {
+fn swap_buffers(
+    mut last_buffer: ResMut<LastBuffer>,
+    mut query: Query<(Entity, &mut Sound), Changed<Sound>>,
+) {
     for (entity, mut sound) in query.iter_mut() {
-        let buffer = sound.buffer.clone();
         if let Some(l) = last_buffer.get(&entity) {
-            if buffer != *l {
+            if sound.buffer != *l {
                 sound.source = None;
                 sound.generator = None;
             }
         }
-        last_buffer.insert(entity, buffer);
+        last_buffer.insert(entity, sound.buffer.clone());
     }
 }
 
@@ -422,16 +424,20 @@ pub struct SynthizerConfig {
 
 #[derive(Debug)]
 pub struct SynthizerDefaults {
-    panner_strategy: syz::PannerStrategy,
-    distance_model: syz::DistanceModel,
-    distance_ref: f64,
-    distance_max: f64,
-    rolloff: f64,
-    closeness_boost: f64,
-    closeness_boost_distance: f64,
+    pub panner_strategy: syz::PannerStrategy,
+    pub distance_model: syz::DistanceModel,
+    pub distance_ref: f64,
+    pub distance_max: f64,
+    pub rolloff: f64,
+    pub closeness_boost: f64,
+    pub closeness_boost_distance: f64,
 }
 
-fn sync_config(context: Res<syz::Context>, config: Res<SynthizerConfig>, defaults: Res<SynthizerDefaults>) {
+fn sync_config(
+    context: Res<syz::Context>,
+    config: Res<SynthizerConfig>,
+    defaults: Res<SynthizerDefaults>,
+) {
     if config.is_changed() {
         context
             .default_panner_strategy()
