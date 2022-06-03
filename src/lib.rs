@@ -112,6 +112,10 @@ impl ScalarPan {
         Self(-1.)
     }
 
+    pub fn center() -> Self {
+        Self(0.)
+    }
+
     pub fn right() -> Self {
         Self(1.)
     }
@@ -222,6 +226,8 @@ pub fn update_sound_properties(
             looping,
             ..
         } = *sound;
+        assert!(gain >= 0.);
+        assert!(pitch >= 0.);
         if sound.restart {
             if let Some(generator) = sound.generator.as_mut() {
                 generator
@@ -327,6 +333,7 @@ pub fn update_sound_properties(
                     let distance_ref = distance_ref
                         .map(|v| **v)
                         .unwrap_or_else(|| context.default_distance_ref().get().unwrap());
+                    assert!(distance_ref >= 0.);
                     source
                         .distance_ref()
                         .set(distance_ref)
@@ -334,6 +341,7 @@ pub fn update_sound_properties(
                     let distance_max = distance_max
                         .map(|v| **v)
                         .unwrap_or_else(|| context.default_distance_max().get().unwrap());
+                    assert!(distance_max >= 0.);
                     source
                         .distance_max()
                         .set(distance_max)
@@ -341,6 +349,7 @@ pub fn update_sound_properties(
                     let rolloff = rolloff
                         .map(|v| **v)
                         .unwrap_or_else(|| context.default_rolloff().get().unwrap());
+                    assert!(rolloff >= 0.);
                     source
                         .rolloff()
                         .set(rolloff)
@@ -348,6 +357,7 @@ pub fn update_sound_properties(
                     let closeness_boost = closeness_boost
                         .map(|v| **v)
                         .unwrap_or_else(|| context.default_closeness_boost().get().unwrap());
+                    assert!(closeness_boost >= 0.);
                     source
                         .closeness_boost()
                         .set(closeness_boost)
@@ -356,6 +366,7 @@ pub fn update_sound_properties(
                         closeness_boost_distance.map(|v| **v).unwrap_or_else(|| {
                             context.default_closeness_boost_distance().get().unwrap()
                         });
+                    assert!(closeness_boost_distance >= 0.);
                     source
                         .closeness_boost_distance()
                         .set(closeness_boost_distance)
@@ -365,10 +376,12 @@ pub fn update_sound_properties(
                 }
             } else if let Some(angular_pan) = angular_pan {
                 if let Some(source) = source.cast_to::<syz::AngularPannedSource>().unwrap() {
+                    assert!(angular_pan.azimuth >= 0. && angular_pan.azimuth <= 360.);
                     source
                         .azimuth()
                         .set(angular_pan.azimuth)
                         .expect("Failed to set azimuth");
+                    assert!(angular_pan.elevation >= -90. && angular_pan.elevation <= 90.);
                     source
                         .elevation()
                         .set(angular_pan.elevation)
@@ -378,6 +391,7 @@ pub fn update_sound_properties(
                 }
             } else if let Some(scalar_pan) = scalar_pan {
                 if let Some(source) = source.cast_to::<syz::ScalarPannedSource>().unwrap() {
+                    assert!(**scalar_pan >= -1. && **scalar_pan <= 1.);
                     source
                         .panning_scalar()
                         .set(**scalar_pan)
