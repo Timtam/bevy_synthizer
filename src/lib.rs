@@ -74,6 +74,16 @@ impl Default for Sound {
 }
 
 #[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
+// #[reflect(Component)]
+pub struct PannerStrategy(pub syz::PannerStrategy);
+
+impl Default for PannerStrategy {
+    fn default() -> Self {
+        Self(syz::PannerStrategy::Delegate)
+    }
+}
+
+#[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
 pub struct DistanceModel(pub syz::DistanceModel);
 
 #[derive(Component, Clone, Copy, Debug, Default, Deref, DerefMut, Reflect)]
@@ -194,6 +204,7 @@ pub fn update_sound_properties(
     buffers: Res<Assets<Buffer>>,
     mut query: Query<(
         &mut Sound,
+        Option<&PannerStrategy>,
         Option<&DistanceModel>,
         Option<&DistanceRef>,
         Option<&DistanceMax>,
@@ -208,6 +219,7 @@ pub fn update_sound_properties(
 ) {
     for (
         mut sound,
+        panner_strategy,
         distance_model,
         distance_ref,
         distance_max,
@@ -250,9 +262,10 @@ pub fn update_sound_properties(
                 if let Some(generator) = sound.generator.as_mut() {
                     generator.buffer().set(&**b).expect("Unable to set buffer");
                     if let Some(translation) = translation {
+                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
                         let source = syz::Source3D::new(
                             &context,
-                            syz::PannerStrategy::Delegate,
+                            *panner_strategy,
                             (
                                 translation.x as f64,
                                 translation.y as f64,
@@ -265,20 +278,19 @@ pub fn update_sound_properties(
                             .expect("Unable to add generator");
                         sound.source = Some(source.into());
                     } else if let Some(scalar_pan) = scalar_pan {
-                        let source = syz::ScalarPannedSource::new(
-                            &context,
-                            syz::PannerStrategy::Delegate,
-                            **scalar_pan,
-                        )
-                        .expect("Failed to create source");
+                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
+                        let source =
+                            syz::ScalarPannedSource::new(&context, *panner_strategy, **scalar_pan)
+                                .expect("Failed to create source");
                         source
                             .add_generator(generator)
                             .expect("Failed to add generator");
                         sound.source = Some(source.into());
                     } else if let Some(angular_pan) = angular_pan {
+                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
                         let source = syz::AngularPannedSource::new(
                             &context,
-                            syz::PannerStrategy::Delegate,
+                            *panner_strategy,
                             angular_pan.azimuth,
                             angular_pan.elevation,
                         )
