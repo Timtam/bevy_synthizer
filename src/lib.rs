@@ -199,6 +199,27 @@ fn swap_buffers(
     }
 }
 
+fn change_panner_strategy(
+    changed: Query<Entity, Changed<PannerStrategy>>,
+    removed: RemovedComponents<PannerStrategy>,
+    mut sounds: Query<&mut Sound>,
+) {
+    let mut check = vec![];
+    for entity in changed.iter() {
+        check.push(entity);
+    }
+    for entity in removed.iter() {
+        check.push(entity);
+    }
+    for entity in check.iter() {
+        if let Ok(mut sound) = sounds.get_mut(*entity) {
+            if sound.source.is_some() {
+                sound.source = None;
+            }
+        }
+    }
+}
+
 pub fn update_sound_properties(
     context: Res<syz::Context>,
     buffers: Res<Assets<Buffer>>,
@@ -570,6 +591,10 @@ impl Plugin for SynthizerPlugin {
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 swap_buffers.before(update_sound_properties),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                change_panner_strategy.before(update_sound_properties),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
