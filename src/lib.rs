@@ -276,10 +276,10 @@ pub fn update_sound_properties(
             sound.generator = Some(generator);
         }
         let translation = global_transform
-            .map(|v| v.translation)
+            .map(|v| v.translation())
             .or_else(|| transform.map(|v| v.translation));
         if sound.source.is_none() {
-            if let Some(b) = buffers.get(sound.buffer.clone()) {
+            if let Some(b) = buffers.get(&sound.buffer) {
                 if let Some(generator) = sound.generator.as_mut() {
                     generator.buffer().set(&**b).expect("Unable to set buffer");
                     if let Some(translation) = translation {

@@ -69,7 +69,7 @@ fn main() {
             ..default()
         })
         .add_plugin(SynthizerPlugin)
-        .add_system(bevy::input::system::exit_on_esc_system)
+        .add_system(bevy::window::close_on_esc)
         .init_resource::<AssetHandles>()
         .add_startup_system(setup)
         .add_system(load_and_create)
