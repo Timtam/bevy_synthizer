@@ -282,6 +282,33 @@ fn add_generator(
     }
 }
 
+fn add_sound_without_source(
+    mut commands: Commands,
+    query: Query<(Entity, Option<&Parent>), (Added<Sound>, Without<Source>)>,
+    parents: Query<&Parent>,
+    sources: Query<&Source>,
+) {
+    for (entity, parent) in &query {
+        let source = if let Some(parent) = parent {
+            let mut parent: Option<&Parent> = Some(parent);
+            let mut target = None;
+            while let Some(p) = parent {
+                if sources.get(**p).is_ok() {
+                    target = Some(**p);
+                    break;
+                }
+                parent = parents.get(**p).ok();
+            }
+            target.map(|v| sources.get(v).unwrap())
+        } else {
+            None
+        };
+        if source.is_none() {
+            commands.entity(entity).insert(Source::default());
+        }
+    }
+}
+
 #[derive(Default, Deref, DerefMut)]
 struct LastBuffer(HashMap<Entity, Handle<Buffer>>);
 
@@ -661,6 +688,7 @@ impl Plugin for SynthizerPlugin {
                 CoreStage::PostUpdate,
                 swap_buffers.before(SynthizerSystems::UpdateHandles),
             )
+            .add_system_to_stage(CoreStage::PostUpdate, add_sound_without_source)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 change_panner_strategy.before(SynthizerSystems::UpdateHandles),
