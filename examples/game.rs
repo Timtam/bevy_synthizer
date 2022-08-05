@@ -35,15 +35,16 @@ fn load_and_create(
         == LoadState::Loaded;
     if handles.loaded {
         commands
-            .spawn()
+            .spawn_bundle(TransformBundle::default())
             .insert(Listener)
-            .insert(Transform::default())
             .insert(RotationTimer::default());
         let handle = handles.sounds[0].clone();
         let buffer = asset_server.get_handle(handle);
         commands
-            .spawn()
-            .insert(Transform::from_translation(Vec3::new(10., 0., 0.)))
+            .spawn_bundle(TransformBundle::from(Transform::from_translation(
+                Vec3::new(10., 0., 0.),
+            )))
+            .insert(Source::default())
             .insert(Sound {
                 buffer,
                 looping: true,

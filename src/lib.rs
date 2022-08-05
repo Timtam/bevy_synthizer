@@ -45,30 +45,19 @@ impl AssetLoader for BufferAssetLoader {
 
 #[derive(Component, Clone, Debug, Reflect)]
 #[reflect(Component)]
-pub struct Sound {
-    pub buffer: Handle<Buffer>,
+pub struct Source {
     pub gain: f64,
-    pub pitch: f64,
-    pub looping: bool,
     pub paused: bool,
-    pub restart: bool,
     #[reflect(ignore)]
-    pub source: Option<syz::Source>,
-    #[reflect(ignore)]
-    pub generator: Option<syz::BufferGenerator>,
+    pub handle: Option<syz::Source>,
 }
 
-impl Default for Sound {
+impl Default for Source {
     fn default() -> Self {
         Self {
-            buffer: Default::default(),
             gain: 1.,
-            pitch: 1.,
-            looping: false,
             paused: false,
-            restart: false,
-            source: None,
-            generator: None,
+            handle: None,
         }
     }
 }
@@ -131,6 +120,33 @@ impl ScalarPan {
     }
 }
 
+#[derive(Component, Clone, Debug, Reflect)]
+#[reflect(Component)]
+pub struct Sound {
+    pub buffer: Handle<Buffer>,
+    pub gain: f64,
+    pub pitch: f64,
+    pub looping: bool,
+    pub paused: bool,
+    pub restart: bool,
+    #[reflect(ignore)]
+    pub generator: Option<syz::BufferGenerator>,
+}
+
+impl Default for Sound {
+    fn default() -> Self {
+        Self {
+            buffer: default(),
+            gain: 1.,
+            pitch: 1.,
+            looping: false,
+            paused: false,
+            restart: false,
+            generator: None,
+        }
+    }
+}
+
 pub enum SynthizerEvent {
     Finished(Entity),
     Looped(Entity),
@@ -140,44 +156,129 @@ pub enum SynthizerEvent {
 #[reflect(Component)]
 pub struct Listener;
 
-pub fn update_listener(
+fn update_listener(
     context: ResMut<syz::Context>,
-    listener: Query<(Option<&Transform>, Option<&GlobalTransform>), With<Listener>>,
+    listener: Query<Option<&GlobalTransform>, With<Listener>>,
 ) {
-    if let Ok((transform, global_transform)) = listener.get_single() {
-        let transform: Option<Transform> = global_transform
+    if let Ok(transform) = listener.get_single() {
+        let transform: Transform = transform
             .map(|v| {
                 let transform: Transform = (*v).into();
                 transform
             })
-            .or_else(|| transform.cloned());
-        if let Some(transform) = transform {
-            let look = transform.local_x();
-            let up = transform.local_z();
-            if let Err(e) = context.position().set((
+            .unwrap_or_default();
+        let look = transform.local_x();
+        let up = transform.local_z();
+        context
+            .position()
+            .set((
                 transform.translation.x as f64,
                 transform.translation.y as f64,
                 transform.translation.z as f64,
-            )) {
-                error!("Error setting listener position: {:?}", e);
-            }
-            if let Err(e) = context.orientation().set((
+            ))
+            .expect("Failed to set listener position");
+        context
+            .orientation()
+            .set((
                 look.x as f64,
                 look.y as f64,
                 look.z as f64,
                 up.x as f64,
                 up.y as f64,
                 up.z as f64,
-            )) {
-                error!("Error setting listener orientation: {:?}", e);
-            }
-        } else {
-            context.position().set((0., 0., 0.)).ok();
-            context.orientation().set((0., 0., 1., 0., 1., 0.)).ok();
+            ))
+            .expect("Failed to set listener orientation");
+    }
+}
+
+fn add_source_handle(
+    context: Res<syz::Context>,
+    mut query: Query<(
+        &mut Source,
+        Option<&PannerStrategy>,
+        Option<&GlobalTransform>,
+        Option<&AngularPan>,
+        Option<&ScalarPan>,
+    )>,
+) {
+    for (mut source, panner_strategy, transform, angular_pan, scalar_pan) in &mut query {
+        if source.handle.is_none() {
+            let panner_strategy = panner_strategy.cloned().unwrap_or_default();
+            let handle: syz::Source = if let Some(transform) = transform {
+                let translation = transform.translation();
+                syz::Source3D::new(
+                    &context,
+                    *panner_strategy,
+                    (
+                        translation.x as f64,
+                        translation.y as f64,
+                        translation.z as f64,
+                    ),
+                )
+                .expect("Failed to create source")
+                .into()
+            } else if let Some(scalar_pan) = scalar_pan {
+                syz::ScalarPannedSource::new(&context, *panner_strategy, **scalar_pan)
+                    .expect("Failed to create source")
+                    .into()
+            } else if let Some(angular_pan) = angular_pan {
+                syz::AngularPannedSource::new(
+                    &context,
+                    *panner_strategy,
+                    angular_pan.azimuth,
+                    angular_pan.elevation,
+                )
+                .expect("Failed to create source")
+                .into()
+            } else {
+                syz::DirectSource::new(&context)
+                    .expect("Failed to create source")
+                    .into()
+            };
+            source.handle = Some(handle);
         }
-    } else {
-        context.position().set((0., 0., 0.)).ok();
-        context.orientation().set((0., 0., 1., 0., 1., 0.)).ok();
+    }
+}
+
+fn add_generator(
+    context: Res<syz::Context>,
+    buffers: Res<Assets<Buffer>>,
+    mut query: Query<(Entity, Option<&Parent>, &mut Sound)>,
+    mut sources: Query<&mut Source>,
+    parents: Query<&Parent>,
+) {
+    for (entity, parent, mut sound) in &mut query {
+        if sound.generator.is_none() {
+            if let Some(b) = buffers.get(&sound.buffer) {
+                let mut source = if let Ok(s) = sources.get_mut(entity) {
+                    Some(s)
+                } else if let Some(parent) = parent {
+                    let mut parent: Option<&Parent> = Some(parent);
+                    let mut target = None;
+                    while let Some(p) = parent {
+                        if sources.get(**p).is_ok() {
+                            target = Some(**p);
+                            break;
+                        }
+                        parent = parents.get(**p).ok();
+                    }
+                    target.map(|v| sources.get_mut(v).unwrap())
+                } else {
+                    None
+                };
+                if let Some(source) = source.as_mut() {
+                    if let Some(handle) = source.handle.as_mut() {
+                        let generator = syz::BufferGenerator::new(&context)
+                            .expect("Failed to create generator");
+                        generator.buffer().set(&**b).expect("Unable to set buffer");
+                        handle
+                            .add_generator(&generator)
+                            .expect("Unable to add generator");
+                        sound.generator = Some(generator);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -188,10 +289,9 @@ fn swap_buffers(
     mut last_buffer: ResMut<LastBuffer>,
     mut query: Query<(Entity, &mut Sound), Changed<Sound>>,
 ) {
-    for (entity, mut sound) in query.iter_mut() {
+    for (entity, mut sound) in &mut query {
         if let Some(l) = last_buffer.get(&entity) {
             if sound.buffer != *l {
-                sound.source = None;
                 sound.generator = None;
             }
         }
@@ -202,30 +302,28 @@ fn swap_buffers(
 fn change_panner_strategy(
     changed: Query<Entity, Changed<PannerStrategy>>,
     removed: RemovedComponents<PannerStrategy>,
-    mut sounds: Query<&mut Sound>,
+    mut sources: Query<&mut Source>,
 ) {
     let mut check = vec![];
-    for entity in changed.iter() {
+    for entity in &changed {
         check.push(entity);
     }
     for entity in removed.iter() {
         check.push(entity);
     }
     for entity in check.iter() {
-        if let Ok(mut sound) = sounds.get_mut(*entity) {
-            if sound.source.is_some() {
-                sound.source = None;
+        if let Ok(mut source) = sources.get_mut(*entity) {
+            if source.handle.is_some() {
+                source.handle = None;
             }
         }
     }
 }
 
-pub fn update_sound_properties(
+fn update_source_properties(
     context: Res<syz::Context>,
-    buffers: Res<Assets<Buffer>>,
     mut query: Query<(
-        &mut Sound,
-        Option<&PannerStrategy>,
+        &mut Source,
         Option<&DistanceModel>,
         Option<&DistanceRef>,
         Option<&DistanceMax>,
@@ -234,13 +332,11 @@ pub fn update_sound_properties(
         Option<&ClosenessBoostDistance>,
         Option<&AngularPan>,
         Option<&ScalarPan>,
-        Option<&Transform>,
         Option<&GlobalTransform>,
     )>,
 ) {
     for (
-        mut sound,
-        panner_strategy,
+        mut source,
         distance_model,
         distance_ref,
         distance_max,
@@ -250,103 +346,16 @@ pub fn update_sound_properties(
         angular_pan,
         scalar_pan,
         transform,
-        global_transform,
-    ) in query.iter_mut()
+    ) in &mut query
     {
-        let Sound {
-            gain,
-            pitch,
-            looping,
-            ..
-        } = *sound;
+        let Source { gain, .. } = *source;
         assert!(gain >= 0.);
-        assert!(pitch >= 0.);
-        if sound.restart {
-            if let Some(generator) = sound.generator.as_mut() {
-                generator
-                    .playback_position()
-                    .set(0.)
-                    .expect("Failed to restart");
-            }
-            sound.restart = false;
-        }
-        if sound.generator.is_none() {
-            let generator =
-                syz::BufferGenerator::new(&context).expect("Failed to create generator");
-            sound.generator = Some(generator);
-        }
-        let translation = global_transform
-            .map(|v| v.translation())
-            .or_else(|| transform.map(|v| v.translation));
-        if sound.source.is_none() {
-            if let Some(b) = buffers.get(&sound.buffer) {
-                if let Some(generator) = sound.generator.as_mut() {
-                    generator.buffer().set(&**b).expect("Unable to set buffer");
-                    if let Some(translation) = translation {
-                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
-                        let source = syz::Source3D::new(
-                            &context,
-                            *panner_strategy,
-                            (
-                                translation.x as f64,
-                                translation.y as f64,
-                                translation.z as f64,
-                            ),
-                        )
-                        .expect("Failed to create source");
-                        source
-                            .add_generator(generator)
-                            .expect("Unable to add generator");
-                        sound.source = Some(source.into());
-                    } else if let Some(scalar_pan) = scalar_pan {
-                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
-                        let source =
-                            syz::ScalarPannedSource::new(&context, *panner_strategy, **scalar_pan)
-                                .expect("Failed to create source");
-                        source
-                            .add_generator(generator)
-                            .expect("Failed to add generator");
-                        sound.source = Some(source.into());
-                    } else if let Some(angular_pan) = angular_pan {
-                        let panner_strategy = panner_strategy.cloned().unwrap_or_default();
-                        let source = syz::AngularPannedSource::new(
-                            &context,
-                            *panner_strategy,
-                            angular_pan.azimuth,
-                            angular_pan.elevation,
-                        )
-                        .expect("Failed to create source");
-                        source
-                            .add_generator(generator)
-                            .expect("Failed to add generator");
-                        sound.source = Some(source.into());
-                    } else {
-                        let source =
-                            syz::DirectSource::new(&context).expect("Failed to create source");
-                        source
-                            .add_generator(generator)
-                            .expect("Failed to add generator");
-                        sound.source = Some(source.into());
-                    }
-                }
-            }
-        }
-        if let Some(generator) = sound.generator.as_mut() {
-            generator.gain().set(gain).expect("Failed to set gain");
-            generator
-                .pitch_bend()
-                .set(pitch)
-                .expect("Failed to set pitch");
-            generator
-                .looping()
-                .set(looping)
-                .expect("Failed to set looping");
-        }
-        if let Some(source) = sound.source.as_mut() {
-            source.gain().set(gain).expect("Failed to set gain");
+        if let Some(handle) = source.handle.as_mut() {
+            handle.gain().set(gain).expect("Failed to set gain");
             let mut clear_source = false;
-            if let Some(translation) = translation {
-                if let Some(source) = source.cast_to::<syz::Source3D>().unwrap() {
+            if let Some(transform) = transform {
+                if let Some(source) = handle.cast_to::<syz::Source3D>().unwrap() {
+                    let translation = transform.translation();
                     source
                         .position()
                         .set((
@@ -408,7 +417,7 @@ pub fn update_sound_properties(
                     clear_source = true;
                 }
             } else if let Some(angular_pan) = angular_pan {
-                if let Some(source) = source.cast_to::<syz::AngularPannedSource>().unwrap() {
+                if let Some(source) = handle.cast_to::<syz::AngularPannedSource>().unwrap() {
                     assert!(angular_pan.azimuth >= 0. && angular_pan.azimuth <= 360.);
                     source
                         .azimuth()
@@ -423,7 +432,7 @@ pub fn update_sound_properties(
                     clear_source = true;
                 }
             } else if let Some(scalar_pan) = scalar_pan {
-                if let Some(source) = source.cast_to::<syz::ScalarPannedSource>().unwrap() {
+                if let Some(source) = handle.cast_to::<syz::ScalarPannedSource>().unwrap() {
                     assert!(**scalar_pan >= -1. && **scalar_pan <= 1.);
                     source
                         .panning_scalar()
@@ -434,14 +443,59 @@ pub fn update_sound_properties(
                 }
             }
             if clear_source {
-                sound.source = None;
+                source.handle = None;
             }
         }
     }
 }
 
-pub fn update_playback_state(query: Query<&Sound>) {
-    for sound in query.iter() {
+fn update_sound_properties(mut query: Query<&mut Sound>) {
+    for mut sound in &mut query {
+        let Sound {
+            gain,
+            pitch,
+            looping,
+            ..
+        } = *sound;
+        assert!(gain >= 0.);
+        assert!(pitch >= 0.);
+        if sound.restart {
+            if let Some(generator) = sound.generator.as_mut() {
+                generator
+                    .playback_position()
+                    .set(0.)
+                    .expect("Failed to restart");
+            }
+            sound.restart = false;
+        }
+        if let Some(generator) = sound.generator.as_mut() {
+            generator.gain().set(gain).expect("Failed to set gain");
+            generator
+                .pitch_bend()
+                .set(pitch)
+                .expect("Failed to set pitch");
+            generator
+                .looping()
+                .set(looping)
+                .expect("Failed to set looping");
+        }
+    }
+}
+
+fn update_source_playback_state(query: Query<&Source>) {
+    for source in &query {
+        if let Some(handle) = &source.handle {
+            if source.paused {
+                handle.pause().expect("Failed to pause");
+            } else {
+                handle.play().expect("Failed to play");
+            }
+        }
+    }
+}
+
+fn update_sound_playback_state(query: Query<&Sound>) {
+    for sound in &query {
         if let Some(generator) = &sound.generator {
             if sound.paused {
                 generator.pause().expect("Failed to pause");
@@ -452,7 +506,7 @@ pub fn update_playback_state(query: Query<&Sound>) {
     }
 }
 
-fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<Sound>) {
+fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<Source>) {
     for entity in removed.iter() {
         last_buffer.remove(&entity);
     }
@@ -540,7 +594,7 @@ fn events(
 ) {
     context.get_events().for_each(|event| {
         if let Ok(event) = event {
-            for (entity, sound) in sounds.iter() {
+            for (entity, sound) in &sounds {
                 if let Some(generator) = &sound.generator {
                     if *generator.handle() == event.source {
                         match event.r#type {
@@ -558,6 +612,13 @@ fn events(
             }
         }
     });
+}
+
+#[derive(SystemLabel, Clone, Hash, Debug, PartialEq, Eq)]
+pub enum SynthizerSystems {
+    UpdateHandles,
+    UpdateProperties,
+    UpdateState,
 }
 
 pub struct SynthizerPlugin;
@@ -590,25 +651,49 @@ impl Plugin for SynthizerPlugin {
             .add_system_to_stage(CoreStage::PreUpdate, sync_config)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                swap_buffers.before(update_sound_properties),
+                add_source_handle.label(SynthizerSystems::UpdateHandles),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                change_panner_strategy.before(update_sound_properties),
+                add_generator.label(SynthizerSystems::UpdateHandles),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                swap_buffers.before(SynthizerSystems::UpdateHandles),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                change_panner_strategy.before(SynthizerSystems::UpdateHandles),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 update_listener
+                    .label(SynthizerSystems::UpdateProperties)
                     .after(TransformSystem::TransformPropagate)
-                    .before(update_playback_state),
+                    .before(SynthizerSystems::UpdateState),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_source_properties
+                    .label(SynthizerSystems::UpdateProperties)
+                    .after(TransformSystem::TransformPropagate)
+                    .before(SynthizerSystems::UpdateState),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 update_sound_properties
+                    .label(SynthizerSystems::UpdateProperties)
                     .after(TransformSystem::TransformPropagate)
-                    .before(update_playback_state),
+                    .before(SynthizerSystems::UpdateState),
             )
-            .add_system_to_stage(CoreStage::PostUpdate, update_playback_state)
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_source_playback_state.label(SynthizerSystems::UpdateState),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_sound_playback_state.label(SynthizerSystems::UpdateState),
+            )
             .add_system_to_stage(CoreStage::PostUpdate, remove_sound)
             .add_system(events);
     }
