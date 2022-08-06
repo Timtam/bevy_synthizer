@@ -678,20 +678,29 @@ impl Plugin for SynthizerPlugin {
             .add_system_to_stage(CoreStage::PreUpdate, sync_config)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
-                add_source_handle.label(SynthizerSystems::UpdateHandles),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
-                add_generator.label(SynthizerSystems::UpdateHandles),
-            )
-            .add_system_to_stage(
-                CoreStage::PostUpdate,
                 swap_buffers.before(SynthizerSystems::UpdateHandles),
             )
-            .add_system_to_stage(CoreStage::PostUpdate, add_sound_without_source)
             .add_system_to_stage(
                 CoreStage::PostUpdate,
                 change_panner_strategy.before(SynthizerSystems::UpdateHandles),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                add_source_handle
+                    .label(SynthizerSystems::UpdateHandles)
+                    .before(SynthizerSystems::UpdateProperties),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                add_generator
+                    .label(SynthizerSystems::UpdateHandles)
+                    .before(SynthizerSystems::UpdateProperties),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                add_sound_without_source
+                    .label(SynthizerSystems::UpdateHandles)
+                    .before(SynthizerSystems::UpdateProperties),
             )
             .add_system_to_stage(
                 CoreStage::PostUpdate,
@@ -711,7 +720,6 @@ impl Plugin for SynthizerPlugin {
                 CoreStage::PostUpdate,
                 update_sound_properties
                     .label(SynthizerSystems::UpdateProperties)
-                    .after(TransformSystem::TransformPropagate)
                     .before(SynthizerSystems::UpdateState),
             )
             .add_system_to_stage(
@@ -723,6 +731,6 @@ impl Plugin for SynthizerPlugin {
                 update_sound_playback_state.label(SynthizerSystems::UpdateState),
             )
             .add_system_to_stage(CoreStage::PostUpdate, remove_sound)
-            .add_system(events);
+            .add_system_to_stage(CoreStage::PreUpdate, events);
     }
 }
