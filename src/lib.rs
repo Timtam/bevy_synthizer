@@ -287,12 +287,18 @@ fn add_sound_without_source(
     query: Query<(Entity, Option<&Parent>), (Added<Sound>, Without<Source>)>,
     parents: Query<&Parent>,
     sources: Query<&Source>,
+    transforms: Query<&GlobalTransform>,
 ) {
     for (entity, parent) in &query {
+        let mut has_transform = false;
         let source = if let Some(parent) = parent {
-            let mut parent: Option<&Parent> = Some(parent);
+            has_transform = transforms.get(**parent).is_ok();
             let mut target = None;
+            let mut parent: Option<&Parent> = Some(parent);
             while let Some(p) = parent {
+                if !has_transform {
+                    has_transform = transforms.get(**p).is_ok();
+                }
                 if sources.get(**p).is_ok() {
                     target = Some(**p);
                     break;
@@ -304,7 +310,10 @@ fn add_sound_without_source(
             None
         };
         if source.is_none() {
-            commands.entity(entity).insert(Source::default());
+            let id = commands.entity(entity).insert(Source::default()).id();
+            if has_transform {
+                commands.entity(id).insert_bundle(TransformBundle::default());
+            }
         }
     }
 }
