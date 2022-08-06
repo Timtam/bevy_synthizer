@@ -284,19 +284,25 @@ fn add_generator(
 
 fn add_sound_without_source(
     mut commands: Commands,
-    query: Query<(Entity, Option<&Parent>), (Added<Sound>, Without<Source>)>,
+    query: Query<
+        (Entity, Option<&Parent>, Option<&GlobalTransform>),
+        (Added<Sound>, Without<Source>),
+    >,
     parents: Query<&Parent>,
     sources: Query<&Source>,
     transforms: Query<&GlobalTransform>,
 ) {
-    for (entity, parent) in &query {
+    for (entity, parent, transform) in &query {
+        let should_check_for_transform = transform.is_none();
         let mut has_transform = false;
         let source = if let Some(parent) = parent {
-            has_transform = transforms.get(**parent).is_ok();
+            if should_check_for_transform {
+                has_transform = transforms.get(**parent).is_ok();
+            }
             let mut target = None;
             let mut parent: Option<&Parent> = Some(parent);
             while let Some(p) = parent {
-                if !has_transform {
+                if should_check_for_transform && !has_transform {
                     has_transform = transforms.get(**p).is_ok();
                 }
                 if sources.get(**p).is_ok() {
@@ -312,7 +318,9 @@ fn add_sound_without_source(
         if source.is_none() {
             let id = commands.entity(entity).insert(Source::default()).id();
             if has_transform {
-                commands.entity(id).insert_bundle(TransformBundle::default());
+                commands
+                    .entity(id)
+                    .insert_bundle(TransformBundle::default());
             }
         }
     }
