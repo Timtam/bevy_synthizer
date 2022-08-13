@@ -556,7 +556,7 @@ fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<
     }
 }
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct SynthizerConfig {
     pub default_panner_strategy: Option<syz::PannerStrategy>,
     pub default_distance_model: Option<syz::DistanceModel>,
@@ -565,6 +565,8 @@ pub struct SynthizerConfig {
     pub default_rolloff: Option<f64>,
     pub default_closeness_boost: Option<f64>,
     pub default_closeness_boost_distance: Option<f64>,
+    pub log_level: syz::LogLevel,
+    pub log_to_stderr: bool,
 }
 
 #[derive(Debug)]
@@ -628,6 +630,8 @@ fn sync_config(
                     .unwrap_or(defaults.closeness_boost_distance),
             )
             .expect("Failed to set closeness_boost_distance");
+        // syz::log_set_level(config.log_level);
+        // syz::log_to_stderr(config.log_to_stderr);
     }
 }
 
@@ -669,11 +673,18 @@ pub struct SynthizerPlugin;
 
 impl Plugin for SynthizerPlugin {
     fn build(&self, app: &mut App) {
-        let guard = syz::initialize().expect("Failed to initialize Synthizer");
-        let context = syz::Context::new().expect("Failed to create Synthizer context");
         if !app.world.contains_resource::<SynthizerConfig>() {
             app.insert_resource(SynthizerConfig::default());
         }
+        let config = app
+            .world
+            .get_resource::<SynthizerConfig>()
+            .unwrap()
+            .clone();
+        // syz::log_set_level(config.log_level);
+        // syz::log_to_stderr(config.log_to_stderr);
+        let guard = syz::initialize().expect("Failed to initialize Synthizer");
+        let context = syz::Context::new().expect("Failed to create Synthizer context");
         let defaults = SynthizerDefaults {
             panner_strategy: context.default_panner_strategy().get().unwrap(),
             distance_model: context.default_distance_model().get().unwrap(),
