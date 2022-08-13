@@ -10,7 +10,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 bevy = { version = "0.8", default-features = false, features = ["bevy_asset"] }
-synthizer = { git = "https://github.com/synthizer/synthizer-rs" }
+synthizer = { git = "https://github.com/ndarilek/synthizer-rs"  }
 
 [dev-dependencies]
 bevy = { version = "0.8", default-features = true }
