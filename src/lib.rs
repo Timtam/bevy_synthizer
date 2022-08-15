@@ -398,7 +398,7 @@ fn update_source_properties(
             handle.gain().set(gain).expect("Failed to set gain");
             let mut clear_source = false;
             if let Some(transform) = transform {
-                if let Some(source) = handle.cast_to::<syz::Source3D>().unwrap() {
+                if let Some(source) = handle.cast_to::<syz::Source3D>().expect("Failed to cast") {
                     let translation = transform.translation();
                     source
                         .position()
@@ -461,7 +461,10 @@ fn update_source_properties(
                     clear_source = true;
                 }
             } else if let Some(angular_pan) = angular_pan {
-                if let Some(source) = handle.cast_to::<syz::AngularPannedSource>().unwrap() {
+                if let Some(source) = handle
+                    .cast_to::<syz::AngularPannedSource>()
+                    .expect("Failed to cast")
+                {
                     assert!(angular_pan.azimuth >= 0. && angular_pan.azimuth <= 360.);
                     source
                         .azimuth()
@@ -476,7 +479,10 @@ fn update_source_properties(
                     clear_source = true;
                 }
             } else if let Some(scalar_pan) = scalar_pan {
-                if let Some(source) = handle.cast_to::<syz::ScalarPannedSource>().unwrap() {
+                if let Some(source) = handle
+                    .cast_to::<syz::ScalarPannedSource>()
+                    .expect("Failed to cast")
+                {
                     assert!(**scalar_pan >= -1. && **scalar_pan <= 1.);
                     source
                         .panning_scalar()
@@ -630,8 +636,6 @@ fn sync_config(
                     .unwrap_or(defaults.closeness_boost_distance),
             )
             .expect("Failed to set closeness_boost_distance");
-        // syz::log_set_level(config.log_level);
-        // syz::log_to_stderr(config.log_to_stderr);
     }
 }
 
@@ -676,14 +680,15 @@ impl Plugin for SynthizerPlugin {
         if !app.world.contains_resource::<SynthizerConfig>() {
             app.insert_resource(SynthizerConfig::default());
         }
-        let config = app
-            .world
-            .get_resource::<SynthizerConfig>()
-            .unwrap()
-            .clone();
-        // syz::log_set_level(config.log_level);
-        // syz::log_to_stderr(config.log_to_stderr);
-        let guard = syz::initialize().expect("Failed to initialize Synthizer");
+        let config = app.world.get_resource::<SynthizerConfig>().unwrap().clone();
+        let mut syz_config = syz::LibraryConfig::new();
+        syz_config.log_level(config.log_level);
+        if config.log_to_stderr {
+            syz_config.log_to_stderr();
+        }
+        let guard = syz_config
+            .initialize()
+            .expect("Failed to initialize Synthizer");
         let context = syz::Context::new().expect("Failed to create Synthizer context");
         let defaults = SynthizerDefaults {
             panner_strategy: context.default_panner_strategy().get().unwrap(),
