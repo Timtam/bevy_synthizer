@@ -508,7 +508,7 @@ fn update_sound_properties(mut query: Query<&mut Sound>) {
             ..
         } = *sound;
         assert!(gain >= 0.);
-        assert!(pitch >= 0.);
+        assert!(pitch >= 0. && pitch <= 2.);
         if sound.restart {
             if let Some(generator) = sound.generator.as_mut() {
                 generator
