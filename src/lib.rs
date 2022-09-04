@@ -271,6 +271,11 @@ fn add_generator(
                         let generator = syz::BufferGenerator::new(&context)
                             .expect("Failed to create generator");
                         generator.buffer().set(&**b).expect("Unable to set buffer");
+                        generator.gain().set(sound.gain).expect("Failed to set gain");
+                        generator
+                            .pitch_bend()
+                            .set(sound.pitch)
+                            .expect("Failed to set pitch");
                         handle
                             .add_generator(&generator)
                             .expect("Unable to add generator");
