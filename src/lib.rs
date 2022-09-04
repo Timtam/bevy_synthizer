@@ -271,7 +271,12 @@ fn add_generator(
                         let generator = syz::BufferGenerator::new(&context)
                             .expect("Failed to create generator");
                         generator.buffer().set(&**b).expect("Unable to set buffer");
-                        generator.gain().set(sound.gain).expect("Failed to set gain");
+                        assert!(sound.gain >= 0.);
+                        assert!(sound.pitch > 0. && sound.pitch <= 2.);
+                        generator
+                            .gain()
+                            .set(sound.gain)
+                            .expect("Failed to set gain");
                         generator
                             .pitch_bend()
                             .set(sound.pitch)
@@ -513,7 +518,7 @@ fn update_sound_properties(mut query: Query<&mut Sound>) {
             ..
         } = *sound;
         assert!(gain >= 0.);
-        assert!(pitch >= 0. && pitch <= 2.);
+        assert!(pitch > 0. && pitch <= 2.);
         if sound.restart {
             if let Some(generator) = sound.generator.as_mut() {
                 generator
