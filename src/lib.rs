@@ -294,56 +294,19 @@ fn add_generator(
 
 fn add_sound_without_source(
     mut commands: Commands,
-    query: Query<
-        (
-            Entity,
-            Option<&PannerStrategy>,
-            Option<&AngularPan>,
-            Option<&ScalarPan>,
-            Option<&DistanceModel>,
-            Option<&DistanceRef>,
-            Option<&DistanceMax>,
-            Option<&Rolloff>,
-            Option<&ClosenessBoost>,
-            Option<&ClosenessBoostDistance>,
-        ),
-        (Added<Sound>, Without<Source>),
-    >,
+    query: Query<Entity, (Added<Sound>, Without<Source>)>,
     parents: Query<&Parent>,
     sources: Query<&Source>,
 ) {
-    for (
-        entity,
-        panner_strategy,
-        scalar_pan,
-        angular_pan,
-        distance_model,
-        distance_ref,
-        distance_max,
-        rolloff,
-        closeness_boost,
-        closeness_boost_distance,
-    ) in &query
-    {
+    for entity in &query {
         let mut has_source = false;
         let mut target = entity;
-        if panner_strategy.is_none()
-            && angular_pan.is_none()
-            && scalar_pan.is_none()
-            && distance_model.is_none()
-            && distance_ref.is_none()
-            && distance_max.is_none()
-            && rolloff.is_none()
-            && closeness_boost.is_none()
-            && closeness_boost_distance.is_none()
-        {
-            while let Ok(parent) = parents.get(target) {
-                if sources.get(**parent).is_ok() {
-                    has_source = true;
-                    break;
-                }
-                target = **parent;
+        while let Ok(parent) = parents.get(target) {
+            if sources.get(**parent).is_ok() {
+                has_source = true;
+                break;
             }
+            target = **parent;
         }
         if !has_source {
             commands.entity(entity).insert(Source::default());
