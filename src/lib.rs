@@ -294,44 +294,22 @@ fn add_generator(
 
 fn add_sound_without_source(
     mut commands: Commands,
-    query: Query<
-        (Entity, Option<&Parent>, Option<&GlobalTransform>),
-        (Added<Sound>, Without<Source>),
-    >,
+    query: Query<Entity, (Added<Sound>, Without<Source>)>,
     parents: Query<&Parent>,
     sources: Query<&Source>,
-    transforms: Query<&GlobalTransform>,
 ) {
-    for (entity, parent, transform) in &query {
-        let should_check_for_transform = transform.is_none();
-        let mut has_transform = false;
-        let source = if let Some(parent) = parent {
-            if should_check_for_transform {
-                has_transform = transforms.get(**parent).is_ok();
+    for entity in &query {
+        let mut has_source = false;
+        let mut target = entity;
+        while let Ok(parent) = parents.get(target) {
+            if sources.get(**parent).is_ok() {
+                has_source = true;
+                break;
             }
-            let mut target = None;
-            let mut parent: Option<&Parent> = Some(parent);
-            while let Some(p) = parent {
-                if should_check_for_transform && !has_transform {
-                    has_transform = transforms.get(**p).is_ok();
-                }
-                if sources.get(**p).is_ok() {
-                    target = Some(**p);
-                    break;
-                }
-                parent = parents.get(**p).ok();
-            }
-            target.map(|v| sources.get(v).unwrap())
-        } else {
-            None
-        };
-        if source.is_none() {
-            let id = commands.entity(entity).insert(Source::default()).id();
-            if has_transform {
-                commands
-                    .entity(id)
-                    .insert_bundle(TransformBundle::default());
-            }
+            target = **parent;
+        }
+        if !has_source {
+            commands.entity(entity).insert(Source::default());
         }
     }
 }
