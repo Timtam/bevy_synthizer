@@ -754,6 +754,9 @@ impl Plugin for SynthizerPlugin {
                 update_sound_playback_state.label(SynthizerSystems::UpdateState),
             )
             .add_system_to_stage(CoreStage::PostUpdate, remove_sound)
-            .add_system_to_stage(CoreStage::PreUpdate, events);
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                events.after(SynthizerSystems::UpdateState),
+            );
     }
 }
