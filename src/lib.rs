@@ -332,13 +332,15 @@ fn swap_buffers(
 }
 
 fn change_panner_strategy(
-    changed: Query<Entity, Changed<PannerStrategy>>,
+    changed: Query<(Entity, ChangeTrackers<PannerStrategy>)>,
     removed: RemovedComponents<PannerStrategy>,
     mut sources: Query<&mut Source>,
 ) {
     let mut check = vec![];
-    for entity in &changed {
-        check.push(entity);
+    for (entity, change) in &changed {
+        if !change.is_added() && change.is_changed() {
+            check.push(entity);
+        }
     }
     for entity in removed.iter() {
         check.push(entity);
