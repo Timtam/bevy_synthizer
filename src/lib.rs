@@ -194,6 +194,7 @@ fn update_listener(
 fn add_source_handle(
     context: Res<syz::Context>,
     mut query: Query<(
+        Entity,
         &mut Source,
         Option<&PannerStrategy>,
         Option<&GlobalTransform>,
@@ -201,7 +202,7 @@ fn add_source_handle(
         Option<&ScalarPan>,
     )>,
 ) {
-    for (mut source, panner_strategy, transform, angular_pan, scalar_pan) in &mut query {
+    for (entity, mut source, panner_strategy, transform, angular_pan, scalar_pan) in &mut query {
         if source.handle.is_none() {
             let panner_strategy = panner_strategy.cloned().unwrap_or_default();
             let handle: syz::Source = if let Some(transform) = transform {
@@ -235,6 +236,7 @@ fn add_source_handle(
                     .expect("Failed to create source")
                     .into()
             };
+            println!("{:?}: Instantiated source", entity);
             source.handle = Some(handle);
         }
     }
@@ -295,20 +297,21 @@ fn add_generator(
 fn add_sound_without_source(
     mut commands: Commands,
     query: Query<Entity, (Added<Sound>, Without<Source>)>,
-    parents: Query<&Parent>,
-    sources: Query<&Source>,
+    parents: Query<(&Parent, Option<&Source>)>,
 ) {
     for entity in &query {
+        println!("{:?}: Maybe add source", entity);
         let mut has_source = false;
         let mut target = entity;
-        while let Ok(parent) = parents.get(target) {
-            if sources.get(**parent).is_ok() {
+        while let Ok((parent, source)) = parents.get(target) {
+            if source.is_some() {
                 has_source = true;
                 break;
             }
             target = **parent;
         }
         if !has_source {
+            println!("Adding default source");
             commands.entity(entity).insert(Source::default());
         }
     }
@@ -348,6 +351,7 @@ fn change_panner_strategy(
     for entity in check.iter() {
         if let Ok(mut source) = sources.get_mut(*entity) {
             if source.handle.is_some() {
+                println!("{:?}: Clearing handle for panner strategy", entity);
                 source.handle = None;
             }
         }
@@ -357,6 +361,7 @@ fn change_panner_strategy(
 fn update_source_properties(
     context: Res<syz::Context>,
     mut query: Query<(
+        Entity,
         &mut Source,
         Option<&DistanceModel>,
         Option<&DistanceRef>,
@@ -370,6 +375,7 @@ fn update_source_properties(
     )>,
 ) {
     for (
+        entity,
         mut source,
         distance_model,
         distance_ref,
@@ -483,6 +489,7 @@ fn update_source_properties(
                 }
             }
             if clear_source {
+                println!("{:?}: Clearing source", entity);
                 source.handle = None;
             }
         }
@@ -636,14 +643,18 @@ fn events(
 ) {
     context.get_events().for_each(|event| {
         if let Ok(event) = event {
+            let mut matched = false;
             for (entity, sound) in &sounds {
                 if let Some(generator) = &sound.generator {
                     if *generator.handle() == event.source {
+                        matched = true;
                         match event.r#type {
                             syz::EventType::Finished => {
+                                println!("{:?} finished", entity);
                                 output.send(SynthizerEvent::Finished(entity));
                             }
                             syz::EventType::Looped => {
+                                println!("{:?} looped", entity);
                                 output.send(SynthizerEvent::Looped(entity));
                             }
                             _ => {}
@@ -651,6 +662,9 @@ fn events(
                         break;
                     }
                 }
+            }
+            if !matched {
+                println!("No match");
             }
         }
     });
