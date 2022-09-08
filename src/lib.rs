@@ -236,7 +236,6 @@ fn add_source_handle(
                     .expect("Failed to create source")
                     .into()
             };
-            println!("{:?}: Instantiated source", entity);
             source.handle = Some(handle);
         }
     }
@@ -300,7 +299,6 @@ fn add_sound_without_source(
     parents: Query<(&Parent, Option<&Source>)>,
 ) {
     for entity in &query {
-        println!("{:?}: Maybe add source", entity);
         let mut has_source = false;
         let mut target = entity;
         while let Ok((parent, source)) = parents.get(target) {
@@ -311,7 +309,6 @@ fn add_sound_without_source(
             target = **parent;
         }
         if !has_source {
-            println!("Adding default source");
             commands.entity(entity).insert(Source::default());
         }
     }
@@ -351,7 +348,6 @@ fn change_panner_strategy(
     for entity in check.iter() {
         if let Ok(mut source) = sources.get_mut(*entity) {
             if source.handle.is_some() {
-                println!("{:?}: Clearing handle for panner strategy", entity);
                 source.handle = None;
             }
         }
@@ -489,7 +485,6 @@ fn update_source_properties(
                 }
             }
             if clear_source {
-                println!("{:?}: Clearing source", entity);
                 source.handle = None;
             }
         }
@@ -650,11 +645,9 @@ fn events(
                         matched = true;
                         match event.r#type {
                             syz::EventType::Finished => {
-                                println!("{:?} finished", entity);
                                 output.send(SynthizerEvent::Finished(entity));
                             }
                             syz::EventType::Looped => {
-                                println!("{:?} looped", entity);
                                 output.send(SynthizerEvent::Looped(entity));
                             }
                             _ => {}
