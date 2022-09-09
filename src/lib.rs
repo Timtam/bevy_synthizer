@@ -194,7 +194,6 @@ fn update_listener(
 fn add_source_handle(
     context: Res<syz::Context>,
     mut query: Query<(
-        Entity,
         &mut Source,
         Option<&PannerStrategy>,
         Option<&GlobalTransform>,
@@ -202,7 +201,7 @@ fn add_source_handle(
         Option<&ScalarPan>,
     )>,
 ) {
-    for (entity, mut source, panner_strategy, transform, angular_pan, scalar_pan) in &mut query {
+    for (mut source, panner_strategy, transform, angular_pan, scalar_pan) in &mut query {
         if source.handle.is_none() {
             let panner_strategy = panner_strategy.cloned().unwrap_or_default();
             let handle: syz::Source = if let Some(transform) = transform {
@@ -357,7 +356,6 @@ fn change_panner_strategy(
 fn update_source_properties(
     context: Res<syz::Context>,
     mut query: Query<(
-        Entity,
         &mut Source,
         Option<&DistanceModel>,
         Option<&DistanceRef>,
@@ -371,7 +369,6 @@ fn update_source_properties(
     )>,
 ) {
     for (
-        entity,
         mut source,
         distance_model,
         distance_ref,
