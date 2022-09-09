@@ -130,7 +130,7 @@ pub struct Sound {
     pub paused: bool,
     pub restart: bool,
     #[reflect(ignore)]
-    pub generator: Option<syz::BufferGenerator>,
+    pub generator: Option<syz::Generator>,
 }
 
 impl Default for Sound {
@@ -284,7 +284,7 @@ fn add_generator(
                         handle
                             .add_generator(&generator)
                             .expect("Unable to add generator");
-                        sound.generator = Some(generator);
+                        sound.generator = Some(generator.into());
                     }
                 }
             }
@@ -500,10 +500,15 @@ fn update_sound_properties(mut query: Query<&mut Sound>) {
         assert!(pitch > 0. && pitch <= 2.);
         if sound.restart {
             if let Some(generator) = sound.generator.as_mut() {
-                generator
-                    .playback_position()
-                    .set(0.)
-                    .expect("Failed to restart");
+                if let Some(generator) = generator
+                    .cast_to::<syz::BufferGenerator>()
+                    .expect("Failed to cast")
+                {
+                    generator
+                        .playback_position()
+                        .set(0.)
+                        .expect("Failed to restart");
+                }
             }
             sound.restart = false;
         }
@@ -513,10 +518,15 @@ fn update_sound_properties(mut query: Query<&mut Sound>) {
                 .pitch_bend()
                 .set(pitch)
                 .expect("Failed to set pitch");
-            generator
-                .looping()
-                .set(looping)
-                .expect("Failed to set looping");
+            if let Some(generator) = generator
+                .cast_to::<syz::BufferGenerator>()
+                .expect("Failed to cast")
+            {
+                generator
+                    .looping()
+                    .set(looping)
+                    .expect("Failed to set looping");
+            }
         }
     }
 }
