@@ -4,13 +4,14 @@ version = "0.1.0"
 authors = ["Nolan Darilek <nolan@thewordnerd.info>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
+repository = "https://labs.lightsout.games/projects/bevy_synthizer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 anyhow = "1"
-bevy = { version = "0.8", default-features = false, features = ["bevy_asset"] }
+bevy = { version = "0.9", default-features = false, features = ["bevy_asset"] }
 synthizer = "0.5"
 
 [dev-dependencies]
-bevy = { version = "0.8", default-features = true }
+bevy = { version = "0.9", default-features = true }

@@ -10,7 +10,7 @@ use bevy::{
 };
 pub use synthizer as syz;
 
-#[derive(Clone, Debug, Deref, DerefMut, PartialEq, TypeUuid)]
+#[derive(Clone, Debug, Deref, DerefMut, PartialEq, Eq, TypeUuid)]
 #[uuid = "6b6b533a-bb1f-11ec-bda2-00155d8fdde9"]
 pub struct Buffer(syz::Buffer);
 
@@ -42,6 +42,9 @@ impl AssetLoader for BufferAssetLoader {
         &["flac", "mp3", "wav"]
     }
 }
+
+#[derive(Resource, Clone, Debug, Deref, DerefMut)]
+pub struct Context(syz::Context);
 
 #[derive(Component, Clone, Debug, Reflect)]
 #[reflect(Component)]
@@ -157,7 +160,7 @@ pub enum SynthizerEvent {
 pub struct Listener;
 
 fn update_listener(
-    context: ResMut<syz::Context>,
+    context: ResMut<Context>,
     listener: Query<Option<&GlobalTransform>, With<Listener>>,
 ) {
     if let Ok(transform) = listener.get_single() {
@@ -192,7 +195,7 @@ fn update_listener(
 }
 
 fn add_source_handle(
-    context: Res<syz::Context>,
+    context: Res<Context>,
     mut query: Query<(
         &mut Source,
         Option<&PannerStrategy>,
@@ -241,7 +244,7 @@ fn add_source_handle(
 }
 
 fn add_generator(
-    context: Res<syz::Context>,
+    context: Res<Context>,
     buffers: Res<Assets<Buffer>>,
     mut query: Query<(Entity, Option<&Parent>, &mut Sound)>,
     mut sources: Query<&mut Source>,
@@ -313,7 +316,7 @@ fn add_sound_without_source(
     }
 }
 
-#[derive(Default, Deref, DerefMut)]
+#[derive(Resource, Default, Deref, DerefMut)]
 struct LastBuffer(HashMap<Entity, Handle<Buffer>>);
 
 fn swap_buffers(
@@ -354,7 +357,7 @@ fn change_panner_strategy(
 }
 
 fn update_source_properties(
-    context: Res<syz::Context>,
+    context: Res<Context>,
     mut query: Query<(
         &mut Source,
         Option<&DistanceModel>,
@@ -561,7 +564,7 @@ fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Resource, Clone, Default, Debug)]
 pub struct SynthizerConfig {
     pub default_panner_strategy: Option<syz::PannerStrategy>,
     pub default_distance_model: Option<syz::DistanceModel>,
@@ -574,7 +577,7 @@ pub struct SynthizerConfig {
     pub log_to_stderr: bool,
 }
 
-#[derive(Debug)]
+#[derive(Resource, Debug)]
 pub struct SynthizerDefaults {
     pub panner_strategy: syz::PannerStrategy,
     pub distance_model: syz::DistanceModel,
@@ -586,7 +589,7 @@ pub struct SynthizerDefaults {
 }
 
 fn sync_config(
-    context: Res<syz::Context>,
+    context: Res<Context>,
     config: Res<SynthizerConfig>,
     defaults: Res<SynthizerDefaults>,
 ) {
@@ -639,7 +642,7 @@ fn sync_config(
 }
 
 fn events(
-    context: Res<syz::Context>,
+    context: Res<Context>,
     sounds: Query<(Entity, &Sound)>,
     mut output: EventWriter<SynthizerEvent>,
 ) {
@@ -677,6 +680,9 @@ pub enum SynthizerSystems {
     UpdateState,
 }
 
+#[derive(Resource)]
+struct InitializationGuard(syz::InitializationGuard);
+
 pub struct SynthizerPlugin;
 
 impl Plugin for SynthizerPlugin {
@@ -693,6 +699,7 @@ impl Plugin for SynthizerPlugin {
         let guard = syz_config
             .initialize()
             .expect("Failed to initialize Synthizer");
+        let guard = InitializationGuard(guard);
         let context = syz::Context::new().expect("Failed to create Synthizer context");
         let defaults = SynthizerDefaults {
             panner_strategy: context.default_panner_strategy().get().unwrap(),
@@ -704,6 +711,7 @@ impl Plugin for SynthizerPlugin {
             closeness_boost_distance: context.default_closeness_boost_distance().get().unwrap(),
         };
         context.enable_events().expect("Failed to enable events");
+        let context = Context(context);
         app.add_asset::<Buffer>()
             .init_asset_loader::<BufferAssetLoader>()
             .register_type::<Listener>()

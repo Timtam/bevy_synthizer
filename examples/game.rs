@@ -8,11 +8,11 @@ struct RotationTimer(Timer);
 
 impl Default for RotationTimer {
     fn default() -> Self {
-        Self(Timer::from_seconds(30., true))
+        Self(Timer::from_seconds(30., TimerMode::Repeating))
     }
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 struct AssetHandles {
     sounds: Vec<HandleUntyped>,
     loaded: bool,
@@ -34,22 +34,22 @@ fn load_and_create(
         .get_group_load_state(handles.sounds.iter().map(|handle| handle.id))
         == LoadState::Loaded;
     if handles.loaded {
-        commands
-            .spawn_bundle(TransformBundle::default())
-            .insert(Listener)
-            .insert(RotationTimer::default());
+        commands.spawn((
+            TransformBundle::default(),
+            Listener,
+            RotationTimer::default(),
+        ));
         let handle = handles.sounds[0].clone();
         let buffer = asset_server.get_handle(handle);
-        commands
-            .spawn_bundle(TransformBundle::from(Transform::from_translation(
-                Vec3::new(10., 0., 0.),
-            )))
-            .insert(Source::default())
-            .insert(Sound {
+        commands.spawn((
+            TransformBundle::from(Transform::from_translation(Vec3::new(10., 0., 0.))),
+            Source::default(),
+            Sound {
                 buffer,
                 looping: true,
                 ..default()
-            });
+            },
+        ));
     }
 }
 
