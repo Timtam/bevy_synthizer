@@ -4,8 +4,7 @@ name: default
 
 steps:
   - name: test
-    image: rust
-    pull: always
+    image: rust:bullseye
     commands:
       - rustup component add clippy rustfmt
       - apt-get update -qq
@@ -14,8 +13,7 @@ steps:
       - cargo test
       - cargo clippy
   - name: release
-    image: rust
-    pull: always
+    image: rust:bullseye
     commands:
       - apt-get update -qq
       - apt-get install -qqy llvm-dev libclang-dev clang cmake pkg-config libx11-dev libasound2-dev libudev-dev libxcb-xfixes0-dev libwayland-dev libxkbcommon-dev libvulkan-dev libpulse-dev
