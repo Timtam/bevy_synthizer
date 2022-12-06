@@ -15,3 +15,9 @@ synthizer = "0.5"
 
 [dev-dependencies]
 bevy = { version = "0.9", default-features = true }
+
+[package.metadata.release]
+publish = false
+push = false
+pre-release-hook = ["git-cliff", "-o", "CHANGELOG.md", "--tag", "{{version}}"]
+pre-release-commit-message = "Release"
