@@ -66,7 +66,6 @@ impl Default for Source {
 }
 
 #[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
-// #[reflect(Component)]
 pub struct PannerStrategy(pub syz::PannerStrategy);
 
 impl Default for PannerStrategy {
@@ -714,13 +713,13 @@ impl Plugin for SynthizerPlugin {
         let context = Context(context);
         app.add_asset::<Buffer>()
             .init_asset_loader::<BufferAssetLoader>()
-            .register_type::<Source>()
             .register_type::<DistanceRef>()
             .register_type::<DistanceMax>()
             .register_type::<Rolloff>()
             .register_type::<ClosenessBoostDistance>()
             .register_type::<AngularPan>()
             .register_type::<ScalarPan>()
+            .register_type::<Source>()
             .register_type::<Sound>()
             .register_type::<Listener>()
             .insert_resource(guard)
