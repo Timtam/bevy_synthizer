@@ -563,19 +563,6 @@ fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<
     }
 }
 
-#[derive(Resource, Clone, Default, Debug)]
-pub struct SynthizerConfig {
-    pub default_panner_strategy: Option<syz::PannerStrategy>,
-    pub default_distance_model: Option<syz::DistanceModel>,
-    pub default_distance_ref: Option<f64>,
-    pub default_distance_max: Option<f64>,
-    pub default_rolloff: Option<f64>,
-    pub default_closeness_boost: Option<f64>,
-    pub default_closeness_boost_distance: Option<f64>,
-    pub log_level: syz::LogLevel,
-    pub log_to_stderr: bool,
-}
-
 #[derive(Resource, Debug)]
 pub struct SynthizerDefaults {
     pub panner_strategy: syz::PannerStrategy,
@@ -589,7 +576,7 @@ pub struct SynthizerDefaults {
 
 fn sync_config(
     context: Res<Context>,
-    config: Res<SynthizerConfig>,
+    config: Res<SynthizerPlugin>,
     defaults: Res<SynthizerDefaults>,
 ) {
     if config.is_changed() {
@@ -682,14 +669,25 @@ pub enum SynthizerSystems {
 #[derive(Resource)]
 struct InitializationGuard(syz::InitializationGuard);
 
-pub struct SynthizerPlugin;
+#[derive(Resource, Clone, Default, Debug)]
+pub struct SynthizerPlugin {
+    pub default_panner_strategy: Option<syz::PannerStrategy>,
+    pub default_distance_model: Option<syz::DistanceModel>,
+    pub default_distance_ref: Option<f64>,
+    pub default_distance_max: Option<f64>,
+    pub default_rolloff: Option<f64>,
+    pub default_closeness_boost: Option<f64>,
+    pub default_closeness_boost_distance: Option<f64>,
+    pub log_level: syz::LogLevel,
+    pub log_to_stderr: bool,
+}
 
 impl Plugin for SynthizerPlugin {
     fn build(&self, app: &mut App) {
-        if !app.world.contains_resource::<SynthizerConfig>() {
-            app.insert_resource(SynthizerConfig::default());
+        if !app.world.contains_resource::<SynthizerPlugin>() {
+            app.insert_resource(self.clone());
         }
-        let config = app.world.get_resource::<SynthizerConfig>().unwrap().clone();
+        let config = app.world.get_resource::<SynthizerPlugin>().unwrap().clone();
         let mut syz_config = syz::LibraryConfig::new();
         syz_config.log_level(config.log_level);
         if config.log_to_stderr {

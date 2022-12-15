@@ -64,12 +64,11 @@ fn rotate_listener(time: Res<Time>, mut query: Query<(&mut RotationTimer, &mut T
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(SynthizerConfig {
+        .add_plugin(SynthizerPlugin {
             default_panner_strategy: Some(bevy_synthizer::syz::PannerStrategy::Hrtf),
             default_distance_model: Some(bevy_synthizer::syz::DistanceModel::Inverse),
             ..default()
         })
-        .add_plugin(SynthizerPlugin)
         .add_system(bevy::window::close_on_esc)
         .init_resource::<AssetHandles>()
         .add_startup_system(setup)
