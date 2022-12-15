@@ -5,18 +5,20 @@ name: default
 steps:
   - name: test
     image: rust:bullseye
+    pull: always
     commands:
       - rustup component add clippy rustfmt
       - apt-get update -qq
-      - apt-get install -qqy llvm-dev libclang-dev clang cmake pkg-config libx11-dev libasound2-dev libudev-dev libxcb-xfixes0-dev libwayland-dev libxkbcommon-dev libvulkan-dev libpulse-dev
+      - apt-get install -qqy cmake pkg-config libx11-dev libasound2-dev libudev-dev libxcb-xfixes0-dev libwayland-dev libxkbcommon-dev libvulkan-dev libpulse-dev
       - cargo fmt --check
       - cargo test
       - cargo clippy
   - name: release
     image: rust:bullseye
+    pull: always
     commands:
       - apt-get update -qq
-      - apt-get install -qqy llvm-dev libclang-dev clang cmake pkg-config libx11-dev libasound2-dev libudev-dev libxcb-xfixes0-dev libwayland-dev libxkbcommon-dev libvulkan-dev libpulse-dev
+      - apt-get install -qqy cmake pkg-config libx11-dev libasound2-dev libudev-dev libxcb-xfixes0-dev libwayland-dev libxkbcommon-dev libvulkan-dev libpulse-dev
       - cargo publish --no-verify
     when:
       ref:
