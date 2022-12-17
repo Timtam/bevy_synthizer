@@ -2,6 +2,7 @@
 name = "bevy_synthizer"
 version = "0.1.0"
 authors = ["Nolan Darilek <nolan@thewordnerd.info>"]
+description = "A Bevy plugin for Synthizer, a library for 3D audio and synthesis with a focus on games and VR applications"
 license = "MIT OR Apache-2.0"
 edition = "2021"
 repository = "https://labs.lightsout.games/projects/bevy_synthizer"
