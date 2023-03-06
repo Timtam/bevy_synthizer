@@ -31,7 +31,7 @@ fn load_and_create(
         return;
     }
     handles.loaded = asset_server
-        .get_group_load_state(handles.sounds.iter().map(|handle| handle.id))
+        .get_group_load_state(handles.sounds.iter().map(|handle| handle.id()))
         == LoadState::Loaded;
     if handles.loaded {
         commands.spawn((
