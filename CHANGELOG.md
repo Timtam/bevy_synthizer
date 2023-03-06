@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 0.2.0 - 2023-03-06
+
+### Features
+
+- `Sound` components can now get audio from either buffers or generators.
+
+### Miscellaneous Tasks
+
+- Update to Bevy 0.10.
+
 ## Version 0.1.0 - 2022-12-17
 
 ### Miscellaneous Tasks
