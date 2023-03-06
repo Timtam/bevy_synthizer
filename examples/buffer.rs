@@ -45,7 +45,7 @@ fn load_and_create(
             TransformBundle::from(Transform::from_translation(Vec3::new(10., 0., 0.))),
             Source::default(),
             Sound {
-                buffer,
+                audio: buffer.into(),
                 looping: true,
                 ..default()
             },

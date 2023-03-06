@@ -122,23 +122,45 @@ impl ScalarPan {
     }
 }
 
-#[derive(Component, Clone, Debug, Reflect)]
-#[reflect(Component)]
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
+pub enum Audio {
+    Buffer(Handle<Buffer>),
+    Generator(syz::Generator),
+}
+
+impl Default for Audio {
+    fn default() -> Self {
+        Self::Buffer(default())
+    }
+}
+
+impl From<Handle<Buffer>> for Audio {
+    fn from(value: Handle<Buffer>) -> Self {
+        Audio::Buffer(value)
+    }
+}
+
+impl From<syz::Generator> for Audio {
+    fn from(value: syz::Generator) -> Self {
+        Self::Generator(value)
+    }
+}
+
+#[derive(Component, Clone, Debug)]
 pub struct Sound {
-    pub buffer: Handle<Buffer>,
+    pub audio: Audio,
     pub gain: f64,
     pub pitch: f64,
     pub looping: bool,
     pub paused: bool,
     pub restart: bool,
-    #[reflect(ignore)]
     pub generator: Option<syz::Generator>,
 }
 
 impl Default for Sound {
     fn default() -> Self {
         Self {
-            buffer: default(),
+            audio: default(),
             gain: 1.,
             pitch: 1.,
             looping: false,
@@ -251,42 +273,52 @@ fn add_generator(
 ) {
     for (entity, parent, mut sound) in &mut query {
         if sound.generator.is_none() {
-            if let Some(b) = buffers.get(&sound.buffer) {
-                let mut source = if let Ok(s) = sources.get_mut(entity) {
-                    Some(s)
-                } else if let Some(parent) = parent {
-                    let mut parent: Option<&Parent> = Some(parent);
-                    let mut target = None;
-                    while let Some(p) = parent {
-                        if sources.get(**p).is_ok() {
-                            target = Some(**p);
-                            break;
-                        }
-                        parent = parents.get(**p).ok();
+            let mut source = if let Ok(s) = sources.get_mut(entity) {
+                Some(s)
+            } else if let Some(parent) = parent {
+                let mut parent: Option<&Parent> = Some(parent);
+                let mut target = None;
+                while let Some(p) = parent {
+                    if sources.get(**p).is_ok() {
+                        target = Some(**p);
+                        break;
                     }
-                    target.map(|v| sources.get_mut(v).unwrap())
-                } else {
-                    None
-                };
-                if let Some(source) = source.as_mut() {
-                    if let Some(handle) = source.handle.as_mut() {
-                        let generator = syz::BufferGenerator::new(&context)
-                            .expect("Failed to create generator");
-                        generator.buffer().set(&**b).expect("Unable to set buffer");
+                    parent = parents.get(**p).ok();
+                }
+                target.map(|v| sources.get_mut(v).unwrap())
+            } else {
+                None
+            };
+            if let Some(source) = source.as_mut() {
+                if let Some(handle) = source.handle.as_mut() {
+                    let generator: Option<syz::Generator> = match &sound.audio {
+                        Audio::Buffer(buffer) => {
+                            if let Some(b) = buffers.get(buffer) {
+                                let generator = syz::BufferGenerator::new(&context)
+                                    .expect("Failed to create generator");
+                                generator.buffer().set(&**b).expect("Unable to set buffer");
+                                Some(generator.into())
+                            } else {
+                                None
+                            }
+                        }
+                        Audio::Generator(generator) => Some(generator.clone()),
+                    };
+                    if let Some(generator) = generator {
                         assert!(sound.gain >= 0.);
-                        assert!(sound.pitch > 0. && sound.pitch <= 2.);
                         generator
                             .gain()
                             .set(sound.gain)
                             .expect("Failed to set gain");
+                        assert!(sound.pitch > 0. && sound.pitch <= 2.);
                         generator
                             .pitch_bend()
                             .set(sound.pitch)
                             .expect("Failed to set pitch");
                         handle
-                            .add_generator(&generator)
+                            .add_generator(generator.handle())
                             .expect("Unable to add generator");
-                        sound.generator = Some(generator.into());
+                        sound.generator = Some(generator);
                     }
                 }
             }
@@ -316,19 +348,19 @@ fn add_sound_without_source(
 }
 
 #[derive(Resource, Default, Deref, DerefMut)]
-struct LastBuffer(HashMap<Entity, Handle<Buffer>>);
+struct LastAudio(HashMap<Entity, Audio>);
 
 fn swap_buffers(
-    mut last_buffer: ResMut<LastBuffer>,
+    mut last_audio: ResMut<LastAudio>,
     mut query: Query<(Entity, &mut Sound), Changed<Sound>>,
 ) {
     for (entity, mut sound) in &mut query {
-        if let Some(l) = last_buffer.get(&entity) {
-            if sound.buffer != *l {
+        if let Some(l) = last_audio.get(&entity) {
+            if sound.audio != *l {
                 sound.generator = None;
             }
         }
-        last_buffer.insert(entity, sound.buffer.clone());
+        last_audio.insert(entity, sound.audio.clone());
     }
 }
 
@@ -557,7 +589,7 @@ fn update_sound_playback_state(query: Query<&Sound>) {
     }
 }
 
-fn remove_sound(mut last_buffer: ResMut<LastBuffer>, removed: RemovedComponents<Source>) {
+fn remove_sound(mut last_buffer: ResMut<LastAudio>, removed: RemovedComponents<Source>) {
     for entity in removed.iter() {
         last_buffer.remove(&entity);
     }
@@ -718,11 +750,10 @@ impl Plugin for SynthizerPlugin {
             .register_type::<AngularPan>()
             .register_type::<ScalarPan>()
             .register_type::<Source>()
-            .register_type::<Sound>()
             .register_type::<Listener>()
             .insert_resource(guard)
             .insert_resource(context)
-            .init_resource::<LastBuffer>()
+            .init_resource::<LastAudio>()
             .insert_resource(defaults)
             .add_event::<SynthizerEvent>()
             .add_system_to_stage(CoreStage::PreUpdate, sync_config)

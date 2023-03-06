@@ -12,7 +12,7 @@ repository = "https://labs.lightsout.games/projects/bevy_synthizer"
 [dependencies]
 anyhow = "1"
 bevy = { version = "0.9", default-features = false, features = ["bevy_asset"] }
-synthizer = "0.5"
+synthizer = "0.5.6"
 
 [dev-dependencies]
 bevy = { version = "0.9", default-features = true }
