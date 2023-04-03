@@ -693,9 +693,11 @@ fn events(
 
 #[derive(SystemSet, Clone, Hash, Debug, PartialEq, Eq)]
 pub enum SynthizerSets {
+    First,
     UpdateHandles,
     UpdateProperties,
     UpdateState,
+    Last,
 }
 
 #[derive(Resource)]
@@ -756,70 +758,42 @@ impl Plugin for SynthizerPlugin {
             .init_resource::<LastAudio>()
             .insert_resource(defaults)
             .add_event::<SynthizerEvent>()
-            .add_system(sync_config.in_base_set(CoreSet::PreUpdate))
-            .add_system(
-                swap_buffers
-                    .in_base_set(CoreSet::PostUpdate)
-                    .before(SynthizerSets::UpdateHandles),
+            .add_systems(
+                (sync_config, swap_buffers, change_panner_strategy)
+                    .in_set(SynthizerSets::First)
+                    .in_base_set(CoreSet::PreUpdate),
             )
-            .add_system(
-                change_panner_strategy
+            .configure_set(SynthizerSets::First.before(SynthizerSets::UpdateHandles))
+            .add_systems(
+                (add_source_handle, add_generator, add_sound_without_source)
                     .in_base_set(CoreSet::PostUpdate)
-                    .before(SynthizerSets::UpdateHandles),
+                    .in_set(SynthizerSets::UpdateHandles),
             )
-            .add_system(
-                add_source_handle
+            .configure_set(SynthizerSets::UpdateHandles.before(SynthizerSets::UpdateProperties))
+            .add_systems(
+                (
+                    update_listener,
+                    update_source_properties,
+                    update_sound_properties,
+                )
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateHandles)
-                    .before(SynthizerSets::UpdateProperties),
+                    .in_set(SynthizerSets::UpdateProperties),
             )
-            .add_system(
-                add_generator
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateHandles)
-                    .before(SynthizerSets::UpdateProperties),
+            .configure_set(
+                SynthizerSets::UpdateProperties
+                    .before(SynthizerSets::UpdateState)
+                    .after(TransformSystem::TransformPropagate),
             )
-            .add_system(
-                add_sound_without_source
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateHandles)
-                    .before(SynthizerSets::UpdateProperties),
-            )
-            .add_system(
-                update_listener
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateProperties)
-                    .after(TransformSystem::TransformPropagate)
-                    .before(SynthizerSets::UpdateState),
-            )
-            .add_system(
-                update_source_properties
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateProperties)
-                    .after(TransformSystem::TransformPropagate)
-                    .before(SynthizerSets::UpdateState),
-            )
-            .add_system(
-                update_sound_properties
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateProperties)
-                    .before(SynthizerSets::UpdateState),
-            )
-            .add_system(
-                update_source_playback_state
+            .add_systems(
+                (update_source_playback_state, update_sound_playback_state)
                     .in_base_set(CoreSet::PostUpdate)
                     .in_set(SynthizerSets::UpdateState),
             )
-            .add_system(
-                update_sound_playback_state
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateState),
-            )
-            .add_system(remove_sound.in_base_set(CoreSet::PostUpdate))
-            .add_system(
-                events
-                    .in_base_set(CoreSet::PostUpdate)
-                    .after(SynthizerSets::UpdateState),
+            .configure_set(SynthizerSets::UpdateState.before(SynthizerSets::Last))
+            .add_systems(
+                (remove_sound, events)
+                    .in_set(SynthizerSets::Last)
+                    .in_base_set(CoreSet::PostUpdate),
             );
     }
 }
