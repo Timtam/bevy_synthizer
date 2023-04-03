@@ -692,7 +692,7 @@ fn events(
 }
 
 #[derive(SystemSet, Clone, Hash, Debug, PartialEq, Eq)]
-pub enum SynthizerSystems {
+pub enum SynthizerSets {
     UpdateHandles,
     UpdateProperties,
     UpdateState,
@@ -760,66 +760,66 @@ impl Plugin for SynthizerPlugin {
             .add_system(
                 swap_buffers
                     .in_base_set(CoreSet::PostUpdate)
-                    .before(SynthizerSystems::UpdateHandles),
+                    .before(SynthizerSets::UpdateHandles),
             )
             .add_system(
                 change_panner_strategy
                     .in_base_set(CoreSet::PostUpdate)
-                    .before(SynthizerSystems::UpdateHandles),
+                    .before(SynthizerSets::UpdateHandles),
             )
             .add_system(
                 add_source_handle
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateHandles)
-                    .before(SynthizerSystems::UpdateProperties),
+                    .in_set(SynthizerSets::UpdateHandles)
+                    .before(SynthizerSets::UpdateProperties),
             )
             .add_system(
                 add_generator
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateHandles)
-                    .before(SynthizerSystems::UpdateProperties),
+                    .in_set(SynthizerSets::UpdateHandles)
+                    .before(SynthizerSets::UpdateProperties),
             )
             .add_system(
                 add_sound_without_source
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateHandles)
-                    .before(SynthizerSystems::UpdateProperties),
+                    .in_set(SynthizerSets::UpdateHandles)
+                    .before(SynthizerSets::UpdateProperties),
             )
             .add_system(
                 update_listener
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateProperties)
+                    .in_set(SynthizerSets::UpdateProperties)
                     .after(TransformSystem::TransformPropagate)
-                    .before(SynthizerSystems::UpdateState),
+                    .before(SynthizerSets::UpdateState),
             )
             .add_system(
                 update_source_properties
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateProperties)
+                    .in_set(SynthizerSets::UpdateProperties)
                     .after(TransformSystem::TransformPropagate)
-                    .before(SynthizerSystems::UpdateState),
+                    .before(SynthizerSets::UpdateState),
             )
             .add_system(
                 update_sound_properties
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateProperties)
-                    .before(SynthizerSystems::UpdateState),
+                    .in_set(SynthizerSets::UpdateProperties)
+                    .before(SynthizerSets::UpdateState),
             )
             .add_system(
                 update_source_playback_state
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateState),
+                    .in_set(SynthizerSets::UpdateState),
             )
             .add_system(
                 update_sound_playback_state
                     .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSystems::UpdateState),
+                    .in_set(SynthizerSets::UpdateState),
             )
             .add_system(remove_sound.in_base_set(CoreSet::PostUpdate))
             .add_system(
                 events
                     .in_base_set(CoreSet::PostUpdate)
-                    .after(SynthizerSystems::UpdateState),
+                    .after(SynthizerSets::UpdateState),
             );
     }
 }
