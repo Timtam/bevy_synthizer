@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 0.3.0 - 2023-04-03
+
+### Features
+
+- [**breaking**] Renamed `SynthizerSystems` to `SynthizerSets`.
+
+### Miscellaneous Tasks
+
+- Restructure system schedule to more idiomatic Bevy 0.10 style.
+
 ## Version 0.2.0 - 2023-03-06
 
 ### Features
