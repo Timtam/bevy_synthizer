@@ -770,20 +770,18 @@ impl Plugin for SynthizerPlugin {
                     .in_set(SynthizerSets::UpdateHandles),
             )
             .configure_set(SynthizerSets::UpdateHandles.before(SynthizerSets::UpdateProperties))
-            .add_systems(
-                (
-                    update_listener,
-                    update_source_properties,
-                    update_sound_properties,
-                )
+            .add_system(
+                update_sound_properties
                     .in_base_set(CoreSet::PostUpdate)
                     .in_set(SynthizerSets::UpdateProperties),
             )
-            .configure_set(
-                SynthizerSets::UpdateProperties
-                    .before(SynthizerSets::UpdateState)
+            .add_systems(
+                (update_listener, update_source_properties)
+                    .in_base_set(CoreSet::PostUpdate)
+                    .in_set(SynthizerSets::UpdateProperties)
                     .after(TransformSystem::TransformPropagate),
             )
+            .configure_set(SynthizerSets::UpdateProperties.before(SynthizerSets::UpdateState))
             .add_systems(
                 (update_source_playback_state, update_sound_playback_state)
                     .in_base_set(CoreSet::PostUpdate)
