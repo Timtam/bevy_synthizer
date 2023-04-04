@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 0.3.1 - 2023-04-04
+
+### Miscellaneous Tasks
+
+- Only `update_source_properties` and `update_listener` need to run after transform propagation.
+
 ## Version 0.3.0 - 2023-04-03
 
 ### Features
