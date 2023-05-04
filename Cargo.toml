@@ -1,6 +1,6 @@
 [package]
 name = "bevy_synthizer"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Nolan Darilek <nolan@thewordnerd.info>"]
 description = "A Bevy plugin for Synthizer, a library for 3D audio and synthesis with a focus on games and VR applications"
 license = "MIT OR Apache-2.0"
