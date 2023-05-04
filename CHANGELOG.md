@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Version 0.3.2 - 2023-05-04
+
+### Bug Fixes
+
+- Instantiate sources for sounds without a source in `PreUpdate`.
+
 ## Version 0.3.1 - 2023-04-04
 
 ### Miscellaneous Tasks
