@@ -759,13 +759,18 @@ impl Plugin for SynthizerPlugin {
             .insert_resource(defaults)
             .add_event::<SynthizerEvent>()
             .add_systems(
-                (sync_config, swap_buffers, change_panner_strategy)
+                (
+                    sync_config,
+                    swap_buffers,
+                    change_panner_strategy,
+                    add_sound_without_source,
+                )
                     .in_set(SynthizerSets::First)
                     .in_base_set(CoreSet::PreUpdate),
             )
             .configure_set(SynthizerSets::First.before(SynthizerSets::UpdateHandles))
             .add_systems(
-                (add_source_handle, add_generator, add_sound_without_source)
+                (add_source_handle, add_generator)
                     .in_base_set(CoreSet::PostUpdate)
                     .in_set(SynthizerSets::UpdateHandles),
             )
