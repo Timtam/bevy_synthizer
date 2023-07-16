@@ -63,16 +63,19 @@ fn rotate_listener(time: Res<Time>, mut query: Query<(&mut RotationTimer, &mut T
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(SynthizerPlugin {
-            default_panner_strategy: Some(bevy_synthizer::syz::PannerStrategy::Hrtf),
-            default_distance_model: Some(bevy_synthizer::syz::DistanceModel::Inverse),
-            ..default()
-        })
-        .add_system(bevy::window::close_on_esc)
+        .add_plugins((
+            DefaultPlugins,
+            SynthizerPlugin {
+                default_panner_strategy: Some(bevy_synthizer::syz::PannerStrategy::Hrtf),
+                default_distance_model: Some(bevy_synthizer::syz::DistanceModel::Inverse),
+                ..default()
+            },
+        ))
         .init_resource::<AssetHandles>()
-        .add_startup_system(setup)
-        .add_system(load_and_create)
-        .add_system(rotate_listener)
+        .add_systems(Startup, setup)
+        .add_systems(
+            Update,
+            (bevy::window::close_on_esc, load_and_create, rotate_listener),
+        )
         .run();
 }

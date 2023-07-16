@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
     prelude::*,
-    reflect::TypeUuid,
+    reflect::{TypePath, TypeUuid},
     transform::TransformSystem,
     utils::BoxedFuture,
 };
 pub use synthizer as syz;
 
-#[derive(Clone, Debug, Deref, DerefMut, PartialEq, Eq, TypeUuid)]
+#[derive(Clone, Debug, Deref, DerefMut, PartialEq, Eq, TypePath, TypeUuid)]
 #[uuid = "6b6b533a-bb1f-11ec-bda2-00155d8fdde9"]
 pub struct Buffer(syz::Buffer);
 
@@ -171,6 +171,7 @@ impl Default for Sound {
     }
 }
 
+#[derive(Event, Debug)]
 pub enum SynthizerEvent {
     Finished(Entity),
     Looped(Entity),
@@ -759,44 +760,53 @@ impl Plugin for SynthizerPlugin {
             .insert_resource(defaults)
             .add_event::<SynthizerEvent>()
             .add_systems(
+                PreUpdate,
                 (
                     sync_config,
                     swap_buffers,
                     change_panner_strategy,
                     add_sound_without_source,
                 )
-                    .in_set(SynthizerSets::First)
-                    .in_base_set(CoreSet::PreUpdate),
+                    .in_set(SynthizerSets::First),
             )
-            .configure_set(SynthizerSets::First.before(SynthizerSets::UpdateHandles))
-            .add_systems(
-                (add_source_handle, add_generator)
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateHandles),
-            )
-            .configure_set(SynthizerSets::UpdateHandles.before(SynthizerSets::UpdateProperties))
-            .add_system(
-                update_sound_properties
-                    .in_base_set(CoreSet::PostUpdate)
-                    .in_set(SynthizerSets::UpdateProperties),
+            .configure_set(
+                PreUpdate,
+                SynthizerSets::First.before(SynthizerSets::UpdateHandles),
             )
             .add_systems(
+                PostUpdate,
+                (add_source_handle, add_generator).in_set(SynthizerSets::UpdateHandles),
+            )
+            .configure_set(
+                PostUpdate,
+                SynthizerSets::UpdateHandles.before(SynthizerSets::UpdateProperties),
+            )
+            .add_systems(
+                PostUpdate,
+                update_sound_properties.in_set(SynthizerSets::UpdateProperties),
+            )
+            .add_systems(
+                PostUpdate,
                 (update_listener, update_source_properties)
-                    .in_base_set(CoreSet::PostUpdate)
                     .in_set(SynthizerSets::UpdateProperties)
                     .after(TransformSystem::TransformPropagate),
             )
-            .configure_set(SynthizerSets::UpdateProperties.before(SynthizerSets::UpdateState))
+            .configure_set(
+                PostUpdate,
+                SynthizerSets::UpdateProperties.before(SynthizerSets::UpdateState),
+            )
             .add_systems(
+                PostUpdate,
                 (update_source_playback_state, update_sound_playback_state)
-                    .in_base_set(CoreSet::PostUpdate)
                     .in_set(SynthizerSets::UpdateState),
             )
-            .configure_set(SynthizerSets::UpdateState.before(SynthizerSets::Last))
+            .configure_set(
+                PostUpdate,
+                SynthizerSets::UpdateState.before(SynthizerSets::Last),
+            )
             .add_systems(
-                (remove_sound, events)
-                    .in_set(SynthizerSets::Last)
-                    .in_base_set(CoreSet::PostUpdate),
+                PostUpdate,
+                (remove_sound, events).in_set(SynthizerSets::Last),
             );
     }
 }
