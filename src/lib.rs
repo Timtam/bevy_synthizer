@@ -276,8 +276,8 @@ fn add_generator(
         if sound.generator.is_none() {
             let mut source = if let Ok(s) = sources.get_mut(entity) {
                 Some(s)
-            } else if let Some(parent) = parent {
-                let mut parent: Option<&Parent> = Some(parent);
+            } else if parent.is_some() {
+                let mut parent = parent;
                 let mut target = None;
                 while let Some(p) = parent {
                     if sources.get(**p).is_ok() {
@@ -357,7 +357,7 @@ fn swap_buffers(
 ) {
     for (entity, mut sound) in &mut query {
         if let Some(l) = last_audio.get(&entity) {
-            if sound.audio != *l {
+            if sound.generator.is_some() && sound.audio != *l {
                 sound.generator = None;
             }
         }
@@ -667,11 +667,9 @@ fn events(
 ) {
     context.get_events().for_each(|event| {
         if let Ok(event) = event {
-            let mut matched = false;
             for (entity, sound) in &sounds {
                 if let Some(generator) = &sound.generator {
                     if *generator.handle() == event.source {
-                        matched = true;
                         match event.r#type {
                             syz::EventType::Finished => {
                                 output.send(SynthizerEvent::Finished(entity));
@@ -684,9 +682,6 @@ fn events(
                         break;
                     }
                 }
-            }
-            if !matched {
-                println!("No match");
             }
         }
     });
