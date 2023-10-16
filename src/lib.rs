@@ -153,7 +153,6 @@ pub struct Sound {
     pub pitch: f64,
     pub looping: bool,
     pub paused: bool,
-    pub restart: bool,
     pub generator: Option<syz::Generator>,
 }
 
@@ -165,7 +164,6 @@ impl Default for Sound {
             pitch: 1.,
             looping: false,
             paused: false,
-            restart: false,
             generator: None,
         }
     }
@@ -533,20 +531,6 @@ fn update_sound_properties(mut query: Query<&mut Sound>) {
         } = *sound;
         assert!(gain >= 0.);
         assert!(pitch > 0. && pitch <= 2.);
-        if sound.restart {
-            if let Some(generator) = sound.generator.as_mut() {
-                if let Some(generator) = generator
-                    .cast_to::<syz::BufferGenerator>()
-                    .expect("Failed to cast")
-                {
-                    generator
-                        .playback_position()
-                        .set(0.)
-                        .expect("Failed to restart");
-                }
-            }
-            sound.restart = false;
-        }
         if let Some(generator) = sound.generator.as_mut() {
             generator.gain().set(gain).expect("Failed to set gain");
             generator
