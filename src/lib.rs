@@ -689,7 +689,7 @@ fn events(
 
 #[derive(SystemSet, Clone, Hash, Debug, PartialEq, Eq)]
 pub enum SynthizerSets {
-    First,
+    PreUpdate,
     UpdateHandles,
     UpdateProperties,
     UpdateState,
@@ -756,21 +756,12 @@ impl Plugin for SynthizerPlugin {
             .add_event::<SynthizerEvent>()
             .add_systems(
                 PreUpdate,
-                (
-                    sync_config,
-                    swap_buffers,
-                    change_panner_strategy,
-                    add_sound_without_source,
-                )
-                    .in_set(SynthizerSets::First),
-            )
-            .configure_set(
-                PreUpdate,
-                SynthizerSets::First.before(SynthizerSets::UpdateHandles),
+                (sync_config, swap_buffers, change_panner_strategy).in_set(SynthizerSets::PreUpdate),
             )
             .add_systems(
                 PostUpdate,
-                (add_source_handle, add_generator).in_set(SynthizerSets::UpdateHandles),
+                (add_sound_without_source, add_source_handle, add_generator)
+                    .in_set(SynthizerSets::UpdateHandles),
             )
             .configure_set(
                 PostUpdate,
