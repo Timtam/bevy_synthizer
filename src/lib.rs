@@ -590,7 +590,7 @@ fn update_sound_playback_state(query: Query<&Sound>) {
     }
 }
 
-fn remove_sound(mut last_buffer: ResMut<LastAudio>, mut removed: RemovedComponents<Source>) {
+fn remove_sound(mut last_buffer: ResMut<LastAudio>, mut removed: RemovedComponents<Sound>) {
     for entity in removed.iter() {
         last_buffer.remove(&entity);
     }
